@@ -1,0 +1,10 @@
+/build*/
+/dist/
+/.cache/
+__pycache__/
+*.pyc
+*.log
+*.nut
+*.core
+.idea/
+.vscode/

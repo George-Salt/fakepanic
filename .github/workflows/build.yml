@@ -1,0 +1,49 @@
+name: CI
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ pkg-config libsdl2-dev libsdl2-ttf-dev ffmpeg fonts-dejavu-core shellcheck
+      - name: Configure and build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          cmake --build build --parallel 2
+      - name: Integration tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Script checks
+        run: |
+          bash -n install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh
+          shellcheck install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh
+          python3 -m py_compile scripts/input-bridge.py tests/integration.py
+      - name: Build installable packages
+        if: matrix.os == 'ubuntu-22.04'
+        run: packaging/package.sh
+      - name: Verify archive installation
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          mkdir /tmp/fakepanic-unpacked
+          tar -xzf dist/*.tar.gz -C /tmp/fakepanic-unpacked
+          FAKEPANIC_PREFIX=/tmp/fakepanic-installed /tmp/fakepanic-unpacked/*/install.sh
+          /tmp/fakepanic-installed/bin/fakepanic --version
+          SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software /tmp/fakepanic-installed/bin/fakepanic --video /tmp/fakepanic-installed/share/fakepanic/examples/bad-apple.mp4 --mute --duration 2
+          sudo dpkg -i dist/*.deb
+          /usr/bin/fakepanic --version
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-22.04'
+        with:
+          name: linux-x86_64-packages
+          path: dist/*
+          if-no-files-found: error

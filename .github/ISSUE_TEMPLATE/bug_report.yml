@@ -1,0 +1,31 @@
+name: Bug report / Ошибка
+description: Report a reproducible problem / Сообщите о воспроизводимой ошибке
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / Окружение
+      description: Distribution, Fake Panic version, display server; Hyprland/Gamescope versions for games. / Дистрибутив, версия Fake Panic, графический сервер; версии Hyprland/Gamescope для игр.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps and command / Шаги и команда
+      description: Include the exact command and how to reproduce. / Укажите команду и шаги воспроизведения.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior / Ожидаемое и фактическое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Логи
+      description: Remove personal paths, tokens and private data. / Удалите личные пути, токены и приватные данные.
+      render: text

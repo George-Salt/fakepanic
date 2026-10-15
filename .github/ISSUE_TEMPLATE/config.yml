@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation / Документация
+    url: https://github.com/George-Salt/fakepanic#readme
+    about: Installation, usage and troubleshooting / Установка, использование и решение проблем
