@@ -41,7 +41,7 @@ jobs:
           SDL_VIDEODRIVER=dummy SDL_RENDER_DRIVER=software /tmp/fakepanic-installed/bin/fakepanic --video /tmp/fakepanic-installed/share/fakepanic/examples/bad-apple.mp4 --mute --duration 2
           sudo dpkg -i dist/*.deb
           /usr/bin/fakepanic --version
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu-22.04'
         with:
           name: linux-x86_64-packages
