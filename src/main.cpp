@@ -416,10 +416,9 @@ static int run(const Options& o) {
         int y = boxY + boxH + std::clamp(h / 38, 14, 34);
         s.text(o.reason, w / 2, y, o.foreground);
         y += line * 2 + 5;
-        const std::array<std::string, 3> diagnostics{
+        const std::array<std::string, 2> diagnostics{
             "[  142.857001] Kernel Offset: disabled",
-            "[  142.857002] CPU: 0 PID: 0 Comm: swapper/0 Not tainted",
-            "[  142.857003] Memory Limit: none"
+            "[  142.881093] CPU: 0 PID: 0 Comm: swapper/0 Not tainted"
         };
         int textWidth = 0;
         for (const auto& text : diagnostics) {
@@ -429,6 +428,8 @@ static int run(const Options& o) {
         for (const auto& text : diagnostics) {
             s.text(text, (w - textWidth) / 2, y, o.foreground, false); y += line + 5;
         }
+        y += line + 5;
+        s.text("Please reboot your computer.", (w - textWidth) / 2, y, o.foreground, false);
         SDL_SetRenderTarget(s.renderer, nullptr);
         SDL_RenderSetViewport(s.renderer, nullptr);
     };

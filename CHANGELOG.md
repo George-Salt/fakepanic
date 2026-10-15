@@ -1,5 +1,10 @@
 # Changelog / История изменений
 
+## Unreleased / Не выпущено
+
+- Keep two timestamped diagnostic lines, set the CPU timestamp to `142.881093`, and show a reboot instruction after a blank line.
+- Оставлены две диагностические строки; время строки CPU — `142.881093`, после пустой строки добавлена просьба перезагрузить компьютер.
+
 ## 1.0.3 — 2026-10-15
 
 ### English
