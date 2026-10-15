@@ -77,7 +77,7 @@ static double videoAspect(const std::string& path) {
     Child probe;
     try {
         probe.pid = spawn({"ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                           "stream=width,height,sample_aspect_ratio:stream_side_data=rotation",
+                           "stream=width,height,sample_aspect_ratio:side_data=rotation",
                            "-of", "default=noprint_wrappers=1", path}, -1, fds[1]);
     } catch (...) { close(fds[0]); close(fds[1]); throw; }
     close(fds[1]);
