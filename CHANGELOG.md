@@ -9,6 +9,7 @@
 - Respect sample aspect ratio and rotation metadata; remove unnecessary 16:9 padding for Bad Apple.
 - Default to English console output; select Russian explicitly with `--lang ru`, without duplicate translations.
 - Standardize future commit messages with Conventional Commits.
+- Refresh the presentation with native 4:3 framing and blue/mint themes.
 
 ### Русский
 
@@ -17,6 +18,7 @@
 - Учитываются пропорции пикселя и поворот; у Bad Apple нет лишних полей от рамки 16:9.
 - Консоль по умолчанию на английском; русский включается через `--lang ru`, без дублирования переводов.
 - Для новых коммитов принят формат Conventional Commits.
+- Обновлена презентация: рамка 4:3, синее и мятное оформление.
 
 ## 1.0.1 — 2026-10-15
 

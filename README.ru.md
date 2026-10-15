@@ -15,7 +15,7 @@
 
 [![Посмотреть Fake Panic](docs/media/preview.gif)](https://github.com/George-Salt/fakepanic/raw/refs/heads/main/docs/media/preview.mp4)
 
-[▶ Запись работы — 10 секунд](https://github.com/George-Salt/fakepanic/raw/refs/heads/main/docs/media/preview.mp4) · [Скачать и установить](https://github.com/George-Salt/fakepanic/releases/latest) · [Настроить](#настройки)
+[▶ Презентация — 14 секунд](https://github.com/George-Salt/fakepanic/raw/refs/heads/main/docs/media/preview.mp4) · [Скачать и установить](https://github.com/George-Salt/fakepanic/releases/latest) · [Настроить](#настройки)
 
 </div>
 
@@ -24,7 +24,7 @@ Fake Panic (`fakepanic`) воспроизводит локальное виде�
 рядом — ASCII-пингвин Tux и вымышленные сообщения об ошибках.
 **Приложение работает в пользовательском пространстве и не обрушает ядро. Выход — Esc.**
 
-Сверху — запись настоящего рендерера в отдельном виртуальном дисплее X11.
+Сверху — запись настоящего рендерера в отдельном X11-дисплее: Bad Apple в рамке 4:3, стандартное синее и мятное оформление.
 [Bad Apple](examples/bad-apple.mp4) включён в проект, чтобы эффект можно было повторить.
 Видеорежим работает через SDL2 в X11 и Wayland. Экспериментальный игровой режим
 захватывает Lutris или Prism Launcher через Gamescope без окна и PipeWire, независимо от рабочего стола.
