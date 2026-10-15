@@ -28,6 +28,11 @@ with tempfile.TemporaryDirectory() as directory:
                        SDL_RENDER_SCALE_QUALITY='linear', LANG='ru_RU.UTF-8')
             subprocess.run([binary, '--video', str(clip), '--mute', '--windowed', '--size',
                             '640x480', '--lang', language], env=env, check=True, timeout=10)
+            text = (output / 'text.log').read_text()
+            assert 'KERNEL PANIC: fatal exception in interrupt' in text
+            assert '[  142.857001] Kernel Offset: disabled' in text
+            assert '[  142.857003] Memory Limit: none' in text
+            assert 'Please reboot' not in text and 'Unsaved data' not in text
             for frame, expected in [(3, (640, 480)), (10, (960, 540)), (18, (1024, 768))]:
                 data = (output / f'{frame}.ppm').read_bytes()
                 header, dimensions, maximum, pixels = data.split(b'\n', 3)
@@ -47,7 +52,7 @@ with tempfile.TemporaryDirectory() as directory:
                         borders.append((y, left, width))
                 assert len(borders) == 2, (case, frame, borders)
                 top, bottom = borders
-                assert abs(top[0] + bottom[0] - (h - 1)) <= 1, (case, frame, borders)
+                assert abs(top[0] + bottom[0] - (h - 1 - 2 * (h // 20))) <= 1, (case, frame, borders)
                 inner_h, inner_w = bottom[0] - top[0] + 1 - 12, top[2] - 12
                 assert top[1] >= 20 and top[1] + top[2] <= w - 20
                 assert abs(inner_w - min(round(inner_h * aspect), w - 52)) <= 1, (case, frame, inner_w, inner_h)

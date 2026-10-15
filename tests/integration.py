@@ -41,7 +41,7 @@ class Integration(unittest.TestCase):
         self.assertIn('Usage:', self.run_app('--help', env=dict(ENV, LANG='ru_RU.UTF-8', LC_ALL='ru_RU.UTF-8')))
         self.assertIn('Usage:', self.run_app('--lang', 'en', '--help'))
         self.assertIn('Использование:', self.run_app('--lang', 'ru', '--help'))
-        self.assertIn('1.0.2', self.run_app('--version'))
+        self.assertIn('1.0.3', self.run_app('--version'))
 
     def test_argument_validation(self):
         for args in [('--fps', '0'), ('--fps', '121'), ('--fps', '24x'),

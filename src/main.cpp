@@ -198,7 +198,7 @@ static Options parse(int argc, char** argv) {
     if (!o.game) o.aspect = videoAspect(o.path);
     else if (!env("FAKEPANIC_CAPTURE_WIDTH").empty() && !env("FAKEPANIC_CAPTURE_HEIGHT").empty())
         o.aspect = number(env("FAKEPANIC_CAPTURE_WIDTH"), 320, 3840) / double(number(env("FAKEPANIC_CAPTURE_HEIGHT"), 240, 2160));
-    if (o.reason.empty()) o.reason = "Kernel panic - not syncing: Fatal exception";
+    if (o.reason.empty()) o.reason = "KERNEL PANIC: fatal exception in interrupt";
     return o;
 }
 
@@ -402,7 +402,7 @@ static int run(const Options& o) {
         cellsX = std::max(2, int(std::lround(double(innerW) / cellW / 2)) * 2);
         cols = cellsX * 2; rows = cellsY * 4;
         boxW = innerW + pad * 2; boxH = innerH + pad * 2;
-        boxX = (w - boxW) / 2; boxY = (h - boxH) / 2;
+        boxX = (w - boxW) / 2; boxY = std::max(8, (h - boxH) / 2 - h / 20);
         s.backdrop = SDL_CreateTexture(s.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
         if (!s.backdrop) throw std::runtime_error(SDL_GetError());
         SDL_SetTextureScaleMode(s.backdrop, SDL_ScaleModeNearest);
@@ -414,10 +414,20 @@ static int run(const Options& o) {
         SDL_SetRenderDrawColor(s.renderer, o.foreground.r, o.foreground.g, o.foreground.b, 255);
         SDL_Rect border{boxX, boxY, boxW, boxH}; SDL_RenderDrawRect(s.renderer, &border);
         int y = boxY + boxH + std::clamp(h / 38, 14, 34);
-        for (const auto& text : {std::string("KERNEL PANIC!"), std::string("Please reboot your computer"), o.reason,
-                                std::string("A fatal kernel error has occurred and the system cannot continue."),
-                                std::string("Restart the computer to recover. Unsaved data may be lost.")}) {
-            s.text(text, w / 2, y, o.foreground); y += line + 5;
+        s.text(o.reason, w / 2, y, o.foreground);
+        y += line * 2 + 5;
+        const std::array<std::string, 3> diagnostics{
+            "[  142.857001] Kernel Offset: disabled",
+            "[  142.857002] CPU: 0 PID: 0 Comm: swapper/0 Not tainted",
+            "[  142.857003] Memory Limit: none"
+        };
+        int textWidth = 0;
+        for (const auto& text : diagnostics) {
+            int width = 0; TTF_SizeUTF8(s.font, text.c_str(), &width, nullptr);
+            textWidth = std::max(textWidth, width);
+        }
+        for (const auto& text : diagnostics) {
+            s.text(text, (w - textWidth) / 2, y, o.foreground, false); y += line + 5;
         }
         SDL_SetRenderTarget(s.renderer, nullptr);
         SDL_RenderSetViewport(s.renderer, nullptr);

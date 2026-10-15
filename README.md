@@ -52,8 +52,8 @@ For the archive, run from the directory containing the downloaded file:
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing  # download SHA256SUMS too
 mkdir -p fakepanic-release
-tar -xzf fakepanic-1.0.2-linux-x86_64.tar.gz -C fakepanic-release
-cd fakepanic-release/fakepanic-1.0.2-linux-x86_64
+tar -xzf fakepanic-1.0.3-linux-x86_64.tar.gz -C fakepanic-release
+cd fakepanic-release/fakepanic-1.0.3-linux-x86_64
 ./install.sh
 ~/.local/bin/fakepanic --version
 ```
@@ -66,7 +66,7 @@ You can also run `./bin/fakepanic` directly from the extracted archive.
 For a `.deb`, let APT resolve dependencies:
 
 ```bash
-sudo apt install ./fakepanic-1.0.2-linux-x86_64.deb
+sudo apt install ./fakepanic-1.0.3-linux-x86_64.deb
 fakepanic --version
 ```
 

@@ -1,5 +1,19 @@
 # Changelog / История изменений
 
+## 1.0.3 — 2026-10-15
+
+### English
+
+- Replace the reboot instructions with an English fatal-interrupt panic headline and timestamped kernel-style diagnostics.
+- Shift the video and text together slightly above the center of the screen.
+- Re-record the presentation near the middle of Bad Apple with a constant blue background.
+
+### Русский
+
+- Вместо инструкций перезагрузки — английский заголовок ошибки прерывания и строки в стиле ядра с временными метками.
+- Видео и текст вместе подняты немного выше центра экрана.
+- Презентация перезаписана примерно на середине Bad Apple, с постоянным синим фоном.
+
 ## 1.0.2 — 2026-10-15
 
 ### English

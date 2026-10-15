@@ -53,8 +53,8 @@ sudo pacman -S --needed sdl2 sdl2_ttf ffmpeg ttf-dejavu python
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing  # также скачайте SHA256SUMS
 mkdir -p fakepanic-release
-tar -xzf fakepanic-1.0.2-linux-x86_64.tar.gz -C fakepanic-release
-cd fakepanic-release/fakepanic-1.0.2-linux-x86_64
+tar -xzf fakepanic-1.0.3-linux-x86_64.tar.gz -C fakepanic-release
+cd fakepanic-release/fakepanic-1.0.3-linux-x86_64
 ./install.sh
 ~/.local/bin/fakepanic --version
 ```
@@ -67,7 +67,7 @@ cd fakepanic-release/fakepanic-1.0.2-linux-x86_64
 Для `.deb` используйте APT, чтобы он установил зависимости:
 
 ```bash
-sudo apt install ./fakepanic-1.0.2-linux-x86_64.deb
+sudo apt install ./fakepanic-1.0.3-linux-x86_64.deb
 fakepanic --version
 ```
 

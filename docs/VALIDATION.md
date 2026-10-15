@@ -7,7 +7,7 @@ Every push and pull request runs `.github/workflows/build.yml` on Ubuntu 22.04 a
 - C++17 Release build with compiler warnings treated as errors.
 - Video frame tests for 4:3, anamorphic 16:9, portrait, extreme wide and extremely narrow files: constant height, adaptive width, safe bounds and no unnecessary padding.
 - English remains the console default under a Russian locale; explicit Russian launcher errors contain one translation.
-- Pixel-level checks after window resizing and fullscreen: centered video, exact two-color rendering and identical English panic screens for EN/RU locales.
+- Pixel-level checks after window resizing and fullscreen: horizontally centered video and a raised composition, exact two-color rendering and identical English panic screens for EN/RU locales.
 - Real FFmpeg decoding of synthetic video: exact frame count, custom colors and Russian text.
 - Invalid arguments, unavailable files and corrupt media return errors.
 - SIGTERM interrupts a blocked live stream and leaves no decoder child process.
@@ -21,7 +21,7 @@ Every push and pull request runs `.github/workflows/build.yml` on Ubuntu 22.04 a
 - Release-сборка C++17; предупреждения компилятора считаются ошибками.
 - Проверки видео 4:3, анаморфного 16:9, вертикального, очень широкого и очень узкого: прежняя высота, адаптивная ширина, безопасные границы и отсутствие лишних полей.
 - При русской локали консоль по умолчанию на английском; при явном выборе русского ошибки лаунчера содержат один перевод.
-- Проверка пикселей после изменения окна и перехода в полный экран: центр видео, отсутствие размытых цветов и одинаковый английский экран при EN/RU.
+- Проверка пикселей после изменения окна и перехода в полный экран: центрирование по горизонтали и поднятая композиция, отсутствие размытых цветов и одинаковый английский экран при EN/RU.
 - Реальное декодирование синтетического видео FFmpeg: число кадров, цвета, русский текст.
 - Ошибки аргументов, отсутствующие и повреждённые файлы возвращают ошибку.
 - SIGTERM прерывает зависший поток без оставшегося дочернего декодера.
@@ -71,3 +71,9 @@ Performance depends on display size, decoder and video codec; no universal FPS o
 Личные игровые установки не используются в CI. Относительное управление мышью не поддерживается.
 Звук воспроизводится отдельным FFplay с приблизительной синхронизацией.
 Производительность зависит от разрешения, декодера и кодека; универсальной гарантии FPS и нагрузки нет.
+
+Panic text is checked at render time: the fatal-interrupt headline and timestamped
+diagnostics must be present; obsolete reboot instructions must be absent.
+
+Текст проверяется при отрисовке: заголовок ошибки прерывания и диагностика с временными
+метками присутствуют, старые инструкции о перезагрузке отсутствуют.

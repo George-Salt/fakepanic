@@ -1,4 +1,5 @@
 #include <SDL.h>
+#include <SDL_ttf.h>
 #include <dlfcn.h>
 #include <cstdio>
 #include <cstdlib>
@@ -35,4 +36,16 @@ extern "C" void SDL_RenderPresent(SDL_Renderer* renderer) {
     present(renderer);
     if (frame == 4) SDL_SetWindowSize(window, 960, 540);
     if (frame == 12) SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+}
+
+extern "C" SDL_Surface* TTF_RenderUTF8_Solid(TTF_Font* font, const char* text, SDL_Color color) {
+    auto render = reinterpret_cast<decltype(&TTF_RenderUTF8_Solid)>(dlsym(RTLD_NEXT, "TTF_RenderUTF8_Solid"));
+    const char* directory = std::getenv("FAKEPANIC_VISUAL_OUTPUT");
+    if (directory) {
+        auto path = std::string(directory) + "/text.log";
+        FILE* file = std::fopen(path.c_str(), "a");
+        if (!file) std::abort();
+        std::fprintf(file, "%s\n", text); std::fclose(file);
+    }
+    return render(font, text, color);
 }
