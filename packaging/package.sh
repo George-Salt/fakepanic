@@ -10,7 +10,9 @@ trap 'rm -rf -- "$STAGE"' EXIT
 mkdir -p "$OUT" "$STAGE/$NAME"
 cmake --install "$BUILD" --prefix "$STAGE/$NAME"
 install -m 755 "$ROOT/install.sh" "$STAGE/$NAME/install.sh"
-install -m 644 "$ROOT/README.md" "$ROOT/README.ru.md" "$ROOT/LICENSE" "$STAGE/$NAME/"
+install -m 644 "$ROOT/README.md" "$ROOT/README.ru.md" "$ROOT/LICENSE" "$ROOT/CONTRIBUTING.md" "$ROOT/SECURITY.md" "$ROOT/CHANGELOG.md" "$STAGE/$NAME/"
+cp -R "$ROOT/docs" "$STAGE/$NAME/docs"
+ln -s share/fakepanic/examples "$STAGE/$NAME/examples"
 tar -C "$STAGE" -czf "$OUT/$NAME.tar.gz" "$NAME"
 (cd "$BUILD" && cpack -G DEB -B "$OUT")
 (cd "$OUT" && sha256sum ./*.tar.gz ./*.deb > SHA256SUMS)

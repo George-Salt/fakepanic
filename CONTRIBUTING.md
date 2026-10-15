@@ -20,14 +20,20 @@ Install dependencies from the README, then run / Установите завис
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
-shellcheck install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh
+shellcheck install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh tests/game-smoke.sh
 python3 -m py_compile scripts/input-bridge.py tests/integration.py
 ```
 
 Tests use synthetic video and SDL's dummy display; no desktop or game is needed.
-For renderer changes also check a real graphical session. Game changes need Hyprland,
-Gamescope and an actual launcher; mention untested combinations explicitly.
+For renderer changes also check a real graphical session. Game changes need Gamescope, PipeWire, GStreamer
+and an actual launcher; mention untested combinations explicitly.
 
 Тесты используют синтетическое видео и виртуальный драйвер SDL; рабочий стол и игра не нужны.
 Изменения отрисовки проверяйте также в графическом сеансе. Изменения игрового режима
-проверяйте с Hyprland, Gamescope и настоящим лаунчером; указывайте непроверенные сочетания.
+проверяйте с Gamescope, PipeWire, GStreamer и настоящим лаунчером; указывайте непроверенные сочетания.
+
+With game dependencies installed, `tests/game-smoke.sh` checks the complete headless
+capture path using synthetic video, without a desktop session or a real game.
+
+С игровыми зависимостями `tests/game-smoke.sh` проверяет полный тракт захвата
+на синтетическом видео без сеанса рабочего стола и настоящей игры.

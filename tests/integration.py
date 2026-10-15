@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 import signal
+import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -95,6 +97,13 @@ class Integration(unittest.TestCase):
         result = subprocess.run([str(launcher), '--lutris', 'abc'], env=ENV,
                                 capture_output=True, timeout=3)
         self.assertEqual(result.returncode, 2)
+        for shell in ('bash', 'zsh', 'fish'):
+            if not shutil.which(shell):
+                continue
+            with self.subTest(shell=shell):
+                command = 'exec ' + ' '.join(map(shlex.quote, [str(launcher), '--video', str(self.clip), '--mute']))
+                result = subprocess.run([shell, '-c', command], env=ENV, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == '__main__':

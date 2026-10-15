@@ -26,7 +26,7 @@ error messages around it. **It runs in user space; it does not crash your kernel
 The recording above captures the actual renderer in an isolated X11 display.
 The supplied [Bad Apple video](examples/bad-apple.mp4) lets you reproduce the effect.
 Video playback supports X11 and Wayland through SDL2. An experimental game mode captures
-Lutris or Prism Launcher through Gamescope on Hyprland.
+Lutris or Prism Launcher through headless Gamescope and PipeWire, independently of the host desktop.
 
 ## Install
 
@@ -59,8 +59,8 @@ cd fakepanic-release/fakepanic-1.0.0-linux-x86_64
 ```
 
 The installer writes to `~/.local/bin` and `~/.local/share/fakepanic`; no root required.
-Add `~/.local/bin` to your `PATH` if necessary (`fish_add_path ~/.local/bin` in Fish).
-Set `FAKEPANIC_PREFIX=/your/prefix ./install.sh` for a different location.
+Add `~/.local/bin` to your `PATH` if necessary; see [shells and desktops](#shells-and-desktops).
+Set `env FAKEPANIC_PREFIX=/your/prefix ./install.sh` for a different location.
 You can also run `./bin/fakepanic` directly from the extracted archive.
 
 For a `.deb`, let APT resolve dependencies:
@@ -156,16 +156,42 @@ The video keeps its aspect ratio with padding. Dots are drawn directly, so the e
 does not depend on Braille font glyphs. The dot grid adapts to the display size.
 Third-party tools may print their own messages in English.
 
+## Shells and desktops
+
+The executable and installer work from **Bash, Zsh and Fish**, and from other shells
+which can execute programs. Your terminal emulator is your choice. Scripts use their
+own Bash shebang; you do not need to make Bash your login shell. Run `./install.sh`,
+not `source install.sh` or `fish install.sh`.
+
+| Shell | Add the default installation to PATH |
+| --- | --- |
+| Bash | `export PATH="$HOME/.local/bin:$PATH"` (persist in `~/.bashrc`) |
+| Zsh | `export PATH="$HOME/.local/bin:$PATH"` (persist in `~/.zshrc`) |
+| Fish | `fish_add_path ~/.local/bin` |
+| Any shell | Use `~/.local/bin/fakepanic` directly |
+
+Video playback uses SDL2's X11 or Wayland backend. The game capture backend uses
+Gamescope's own headless output and PipeWire stream; it makes **no Hyprland IPC calls**
+and does not require a host virtual monitor or a desktop screen-capture portal.
+This removes the compositor dependency for KDE Plasma, GNOME, Sway, Xfce and other
+Linux desktops. The backend is tested without `DISPLAY`, `WAYLAND_DISPLAY` or Hyprland
+environment variables; individual desktop/driver combinations still need compatible
+SDL2, Gamescope, Vulkan and PipeWire installations.
+
 ## Experimental game mode
 
-Requires an active **Hyprland 0.56+** session with its Lua dispatcher API, Gamescope,
-`wf-recorder`, `jq`, Python 3, `libX11`, `libXtst`, and the selected launcher.
-Video mode does not need any of these game-specific dependencies.
+Requires **Gamescope with the headless backend and PipeWire support** (tested: 3.16),
+a running PipeWire service, GStreamer tools, the `pipewiresrc`, `videoscale`, `videoconvert`
+and `fdsink` plugins, `jq`, Python 3, `libX11`, `libXtst`, and the selected launcher.
+Video mode does not need these game-specific dependencies.
 
 ```bash
 # Arch / CachyOS: extra dependencies
-sudo pacman -S --needed gamescope wf-recorder jq libx11 libxtst
-# Install Lutris and/or Prism Launcher separately.
+sudo pacman -S --needed gamescope pipewire gst-plugin-pipewire gstreamer gst-plugins-base jq libx11 libxtst
+
+# Debian / Ubuntu: GStreamer and PipeWire dependencies
+sudo apt install pipewire gstreamer1.0-tools gstreamer1.0-pipewire gstreamer1.0-plugins-base jq libx11-6 libxtst6
+# Install a compatible Gamescope from your distribution, plus Lutris and/or Prism Launcher.
 
 fakepanic --lutris 42 --stats
 fakepanic --prism "My instance" --stats
@@ -173,10 +199,12 @@ fakepanic --prism "My instance" --capture-size 960x540 --fps 30
 ```
 
 The Lutris ID is your local game ID; the Prism name is your existing instance name.
-The launcher always starts a new Gamescope process and creates its own temporary headless
-output. `--monitor NAME` chooses a new output name; an existing output is refused.
-Exit cleanup removes that output and stops the capture and Gamescope processes it started.
-Some launchers can keep the game running separately; close it normally if needed.
+Fake Panic starts its own headless Gamescope process, locates the PipeWire video node
+belonging to that process, and converts its frames directly to the renderer's tiny
+grayscale grid. It never captures your desktop. `--capture-size WIDTHxHEIGHT` chooses
+the virtual output size (320×240 to 3840×2160). The game itself uses a 1280×720 logical
+screen for consistent input coordinates. Exit stops the capture and Gamescope processes
+it started. Some launchers can keep the game running separately; close it normally if needed.
 
 **Limitations:** game mode is experimental and has capture latency. Basic keyboard,
 mouse buttons, wheel and absolute cursor positioning are forwarded through XTEST.
@@ -184,10 +212,12 @@ mouse buttons, wheel and absolute cursor positioning are forwarded through XTEST
 Esc exits Fake Panic; F1 sends Escape to the game. Launchers which reuse an existing
 process may not stay inside Gamescope. Nested display detection can fail in such cases.
 Set `FAKEPANIC_GAME_DISPLAY=:N` only when you know the correct nested display.
-The desktop Xwayland display is refused by default.
+The desktop Xwayland display is refused by default. The game must support X11/Xwayland;
+the host desktop can use either X11 or Wayland. Gamescope requires a compatible Vulkan driver.
 
-The local automated suite covers renderer/launcher validation and stream shutdown;
-commercial games and personal Prism instances are not included in CI.
+The automated suite covers renderer/launcher validation, Bash/Zsh/Fish launches and
+stream shutdown. `tests/game-smoke.sh` additionally checks the real headless capture
+path with synthetic content; commercial games and personal Prism instances are not CI fixtures.
 See [validation scope](docs/VALIDATION.md).
 
 ## Troubleshooting
@@ -199,9 +229,8 @@ See [validation scope](docs/VALIDATION.md).
 | Font error or missing Russian letters | Install DejaVu Sans Mono or use `--font /path/to/font.ttf` |
 | Video will not decode | Run `ffmpeg -v error -i FILE -f null -`; read stderr from Fake Panic |
 | No audio | Check FFplay and audio output; try `ffplay -nodisp -autoexit FILE` |
-| Waiting for game capture | Inspect `~/.local/state/fakepanic/` (or `$XDG_STATE_HOME/fakepanic/`) |
+| Waiting for game capture | Check PipeWire, Gamescope and the GStreamer plugins; inspect `~/.local/state/fakepanic/` (or `$XDG_STATE_HOME/fakepanic/`) |
 | Game input unavailable | Check the nested X11 display and XTEST; relative mouse look is unsupported |
-| Hyprland API error | Confirm Hyprland version and its [Lua dispatchers](https://wiki.hypr.land/configuring/core/dispatchers/) |
 
 Missing video frames or startup failure produce a nonzero exit status. A stream that
 has not produced its first frame times out after 20 seconds. Ctrl+C / SIGTERM clean up children.
@@ -210,7 +239,7 @@ has not produced its first frame times out after 20 seconds. Ctrl+C / SIGTERM cl
 
 ```text
 Video → FFmpeg → grayscale samples → ordered dots → SDL2
-Game  → Gamescope → headless Hyprland output → wf-recorder → FFmpeg → SDL2
+Game  → headless Gamescope → PipeWire → GStreamer grayscale → SDL2
 Input ← nested Gamescope X11 session ← XTEST bridge ← SDL2 events
 ```
 

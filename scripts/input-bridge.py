@@ -4,6 +4,7 @@ import ctypes
 import ctypes.util
 import os
 import sys
+import time
 from pathlib import Path
 
 
@@ -43,7 +44,15 @@ def game_display():
 
 
 def main():
-    display = game_display()
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            display = game_display()
+            break
+        except RuntimeError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
     if display == os.getenv('DISPLAY') and not os.getenv('FAKEPANIC_ALLOW_HOST_X11'):
         raise RuntimeError('Refusing desktop input / Ввод в основной рабочий стол запрещён')
     x11 = ctypes.CDLL(ctypes.util.find_library('X11') or 'libX11.so.6')
@@ -61,7 +70,7 @@ def main():
     xtst.XTestFakeMotionEvent.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong]
     connection = x11.XOpenDisplay(display.encode())
     if not connection:
-        raise RuntimeError(f'Cannot connect to nested display {display}')
+        raise RuntimeError(f'Cannot connect / Не удалось подключиться: {display}')
     held = set()
     aliases = {'up': 'Up', 'down': 'Down', 'left': 'Left', 'right': 'Right',
                'enter': 'Return', 'backspace': 'BackSpace', 'tab': 'Tab',
@@ -72,7 +81,7 @@ def main():
     def keycode(name):
         symbol = aliases.get(name, name)
         return x11.XKeysymToKeycode(connection, x11.XStringToKeysym(symbol.encode()))
-    print(f'[input] ready on {display}; mouse positioning and keyboard forwarding enabled', file=sys.stderr, flush=True)
+    print(f'[input] ready on {display}; keyboard and mouse enabled / клавиатура и мышь подключены', file=sys.stderr, flush=True)
     try:
         for line in sys.stdin:
             parts = line.strip().split()

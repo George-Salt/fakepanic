@@ -10,15 +10,12 @@ else
   BIN="$DATA/fakepanic-renderer"
 fi
 [[ -x "$BIN" ]] || { echo 'Renderer missing. Run ./install.sh / Запустите ./install.sh' >&2; exit 1; }
-args=(); mode=''; target=''; monitor=''
+args=(); mode=''; target=''
 while (( $# )); do
   case "$1" in
     --lutris|--prism)
       [[ -z "$mode" && $# -ge 2 && -n "$2" && "$2" != -* ]] || { echo 'Expected one game target / Укажите одну игру' >&2; exit 2; }
       mode="${1#--}"; target="$2"; shift 2 ;;
-    --monitor)
-      [[ $# -ge 2 && "$2" =~ ^[A-Za-z0-9_-]+$ ]] || { echo 'Invalid monitor / Неверный монитор' >&2; exit 2; }
-      monitor="$2"; shift 2 ;;
     --capture-size)
       [[ $# -ge 2 && "$2" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]] || { echo 'Expected WIDTHxHEIGHT / Ожидается ШИРИНАxВЫСОТА' >&2; exit 2; }
       export FAKEPANIC_CAPTURE_WIDTH="${2%x*}" FAKEPANIC_CAPTURE_HEIGHT="${2#*x}"; shift 2 ;;
@@ -31,7 +28,6 @@ done
 if [[ -n "$mode" ]]; then
   [[ "$mode" != lutris || "$target" =~ ^[0-9]+$ ]] || { echo 'Lutris: numeric ID / числовой ID' >&2; exit 2; }
   export FAKEPANIC_ROOT="$DATA" FAKEPANIC_BIN="$BIN" FAKEPANIC_LAUNCHER="$mode" FAKEPANIC_TARGET="$target"
-  [[ -z "$monitor" ]] || export FAKEPANIC_MONITOR="$monitor"
   exec "$DATA/scripts/start-game.sh" "${args[@]}"
 fi
 exec "$BIN" "${args[@]}"

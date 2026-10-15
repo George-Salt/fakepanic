@@ -8,7 +8,7 @@ Every push and pull request runs `.github/workflows/build.yml` on Ubuntu 22.04 a
 - Real FFmpeg decoding of synthetic video: exact frame count, custom colors and Russian text.
 - Invalid arguments, unavailable files and corrupt media return errors.
 - SIGTERM interrupts a blocked live stream and leaves no decoder child process.
-- Installed launcher works with paths containing spaces and rejects invalid Lutris IDs.
+- Installed launcher works with paths containing spaces, rejects invalid Lutris IDs, and plays video from Bash, Zsh and Fish.
 - ShellCheck, Bash syntax checks and Python compilation.
 - Ubuntu 22.04 builds `.tar.gz` and `.deb`, checks archive installation, plays two seconds
   of the bundled video with SDL's dummy driver, and installs the Debian package.
@@ -19,7 +19,7 @@ Every push and pull request runs `.github/workflows/build.yml` on Ubuntu 22.04 a
 - Реальное декодирование синтетического видео FFmpeg: число кадров, цвета, русский текст.
 - Ошибки аргументов, отсутствующие и повреждённые файлы возвращают ошибку.
 - SIGTERM прерывает зависший поток без оставшегося дочернего декодера.
-- Установленный лаунчер работает с пробелами в путях и отклоняет неверный ID Lutris.
+- Лаунчер работает с пробелами в путях, отклоняет неверный ID Lutris и воспроизводит видео из Bash, Zsh и Fish.
 - ShellCheck, синтаксис Bash и компиляция Python.
 - Ubuntu 22.04 собирает `.tar.gz` и `.deb`, проверяет установку архива, воспроизводит
   две секунды Bad Apple через dummy-драйвер SDL и устанавливает пакет Debian.
@@ -36,16 +36,32 @@ under AddressSanitizer and UndefinedBehaviorSanitizer.
 Пример декодируется со стандартной частотой 24 FPS. Локальные интеграционные тесты
 дополнительно выполняются с AddressSanitizer и UndefinedBehaviorSanitizer.
 
+`tests/game-smoke.sh` exercises the full game capture path with a synthetic application
+and a temporary Prism-compatible launcher: headless Gamescope → PipeWire → GStreamer → SDL.
+It unsets `DISPLAY`, `WAYLAND_DISPLAY` and `HYPRLAND_INSTANCE_SIGNATURE`, so the capture
+cannot use the host compositor. About 24 frames per second are displayed; the nested
+X11 display is identified for input, and the owned processes are stopped on exit.
+This checks capture plumbing, not Minecraft or a commercial game.
+The integration suite also launches video playback from Bash, Zsh and Fish.
+
+`tests/game-smoke.sh` проверяет полный тракт игрового захвата с синтетическим приложением
+и временным Prism-совместимым лаунчером: Gamescope без окна → PipeWire → GStreamer → SDL.
+Переменные `DISPLAY`, `WAYLAND_DISPLAY` и `HYPRLAND_INSTANCE_SIGNATURE` удаляются;
+захват не может использовать основной композитор. Выводится около 24 кадров в секунду,
+вложенный X11 определяется для ввода, запущенные процессы завершаются при выходе.
+Это проверка захвата, а не Minecraft или коммерческой игры.
+Интеграционные тесты также воспроизводят видео через Bash, Zsh и Fish.
+
 ## Scope / Границы
 
 The suite does not certify every Linux distribution, graphics driver, codec or game.
-Game mode depends on Hyprland's Lua API, Gamescope, launcher process behavior and XTEST.
+Game mode depends on Gamescope/Vulkan, PipeWire, GStreamer, launcher process behavior and XTEST.
 Personal game installations are not CI fixtures. Raw/relative mouse look is unsupported.
 Audio uses a separate FFplay process and is approximately synchronized.
 Performance depends on display size, decoder and video codec; no universal FPS or CPU guarantee is made.
 
 Проверки не охватывают все дистрибутивы, драйверы, кодеки и игры.
-Игровой режим зависит от Lua API Hyprland, Gamescope, поведения процессов лаунчера и XTEST.
+Игровой режим зависит от Gamescope/Vulkan, PipeWire, GStreamer, поведения лаунчера и XTEST.
 Личные игровые установки не используются в CI. Относительное управление мышью не поддерживается.
 Звук воспроизводится отдельным FFplay с приблизительной синхронизацией.
 Производительность зависит от разрешения, декодера и кодека; универсальной гарантии FPS и нагрузки нет.

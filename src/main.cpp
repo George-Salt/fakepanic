@@ -104,7 +104,7 @@ static void help() {
         << "  --threshold 128              " << tr("Brightness threshold (0–255)", "Порог яркости (0–255)") << "\n"
         << "  --font FILE                  " << tr("Monospace TTF font", "Моноширинный шрифт TTF") << "\n"
         << "  --duration SECONDS --stats   " << tr("Time limit and FPS output", "Лимит времени и вывод FPS") << "\n"
-        << "  --lutris ID | --prism NAME   " << tr("Experimental Hyprland game mode", "Экспериментальный игровой режим Hyprland") << "\n"
+        << "  --lutris ID | --prism NAME   " << tr("Experimental Gamescope/PipeWire game mode", "Экспериментальный режим Gamescope/PipeWire") << "\n"
         << "  --capture-size 1280x720      " << tr("Game capture size", "Размер захвата игры") << "\n"
         << tr("Esc: exit. F1: send Escape to game. --help, --version\n", "Esc: выход. F1: Escape в игру. --help, --version\n");
 }
@@ -141,6 +141,7 @@ static Options parse(int argc, char** argv) {
     }
     if (o.game) {
         o.path = env("FAKEPANIC_STREAM");
+        if (!env("FAKEPANIC_PIPEWIRE_NODE").empty()) o.path = "pipewire:" + env("FAKEPANIC_PIPEWIRE_NODE");
         if (o.path.empty()) throw std::runtime_error(tr("No game stream", "Не задан поток игры"));
     } else if (o.path.empty() || !std::filesystem::is_regular_file(o.path)) {
         throw std::runtime_error(tr("Video not found: ", "Видео не найдено: ") + o.path);
@@ -172,8 +173,20 @@ struct Video {
             ":force_original_aspect_ratio=decrease:flags=area,pad=" + std::to_string(w) + ":" + std::to_string(h) + ":(ow-iw)/2:(oh-ih)/2,format=gray";
         if (!o.game) filter = "fps=" + std::to_string(o.fps) + "," + filter;
         std::vector<std::string> args{"ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"};
-        if (o.game) args.insert(args.end(), {"-fflags", "nobuffer", "-flags", "low_delay", "-probesize", "32768", "-analyzeduration", "100000"});
-        args.insert(args.end(), {"-i", o.path, "-filter_threads", "1", "-vf", filter, "-threads", "1", "-f", "rawvideo", "-pix_fmt", "gray", "-an", "-sn", "-"});
+        if (o.game && !env("FAKEPANIC_PIPEWIRE_NODE").empty()) {
+            auto serial = env("FAKEPANIC_PIPEWIRE_NODE");
+            if (serial.find_first_not_of("0123456789") != std::string::npos) {
+                close(fds[0]); close(fds[1]); throw std::runtime_error("Invalid PipeWire serial");
+            }
+            args = {"gst-launch-1.0", "-q", "pipewiresrc", "target-object=" + serial, "do-timestamp=true",
+                    "!", "queue", "leaky=downstream", "max-size-buffers=2", "max-size-bytes=0", "max-size-time=0",
+                    "!", "videoscale", "method=1", "add-borders=true", "!", "videoconvert", "!",
+                    "video/x-raw,format=GRAY8,width=" + std::to_string(w) + ",height=" + std::to_string(h) + ",pixel-aspect-ratio=1/1",
+                    "!", "fdsink", "fd=1", "sync=false"};
+        } else {
+            if (o.game) args.insert(args.end(), {"-fflags", "nobuffer", "-flags", "low_delay", "-probesize", "32768", "-analyzeduration", "100000"});
+            args.insert(args.end(), {"-i", o.path, "-filter_threads", "1", "-vf", filter, "-threads", "1", "-f", "rawvideo", "-pix_fmt", "gray", "-an", "-sn", "-"});
+        }
         try { child.pid = spawn(args, -1, fds[1]); }
         catch (...) { close(fds[0]); close(fds[1]); throw; }
         close(fds[1]); fd = fds[0];
@@ -245,6 +258,17 @@ static std::string keyName(SDL_Keycode code) {
     if (code >= SDLK_0 && code <= SDLK_9) return std::string(1, char(code));
     switch (code) {
         case SDLK_F1: return "escape";
+        case SDLK_MINUS: return "minus";
+        case SDLK_EQUALS: return "equal";
+        case SDLK_PERIOD: return "period";
+        case SDLK_COMMA: return "comma";
+        case SDLK_SLASH: return "slash";
+        case SDLK_BACKSLASH: return "backslash";
+        case SDLK_SEMICOLON: return "semicolon";
+        case SDLK_QUOTE: return "apostrophe";
+        case SDLK_LEFTBRACKET: return "bracketleft";
+        case SDLK_RIGHTBRACKET: return "bracketright";
+        case SDLK_BACKQUOTE: return "grave";
         case SDLK_LSHIFT: case SDLK_RSHIFT: return "shift";
         case SDLK_LCTRL: case SDLK_RCTRL: return "ctrl";
         case SDLK_LALT: case SDLK_RALT: return "alt";
@@ -296,7 +320,8 @@ static int run(const Options& o) {
     TTF_SetFontHinting(s.font, TTF_HINTING_MONO);
     const int dot = std::clamp(h / 330, 2, 5), pitch = dot * 2;
     const int cellW = pitch * 2 + dot, cellH = pitch * 4 + dot;
-    const int cellsX = std::max(18, int(w * 0.56) / cellW);
+    // GRAY8 GStreamer rows use a four-byte stride; an even cell count keeps rows packed.
+    const int cellsX = std::max(18, int(w * 0.56) / cellW / 2 * 2);
     const int cellsY = std::max(10, std::min(int(h * 0.49) / cellH, cellsX * cellW * 9 / (16 * cellH)));
     const int cols = cellsX * 2, rows = cellsY * 4, pad = 6;
     const int boxW = cellsX * cellW + pad * 2, boxH = cellsY * cellH + pad * 2;
@@ -386,7 +411,7 @@ static int run(const Options& o) {
         SDL_Delay(2);
     }
     if (o.stats) std::cerr << "[stats] frames=" << frames << '\n';
-    if (failed) std::cerr << tr("Video decoding/capture failed; see FFmpeg output above.\n", "Ошибка декодирования/захвата; см. вывод FFmpeg выше.\n");
+    if (failed) std::cerr << tr("Video decoding/capture failed; see decoder output above.\n", "Ошибка декодирования/захвата; см. вывод декодера выше.\n");
     return interrupted ? 128 + interrupted : (failed ? 1 : 0);
 }
 

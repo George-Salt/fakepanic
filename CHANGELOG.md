@@ -8,7 +8,8 @@
 - Local video playback in a simulated kernel panic screen with Braille-style dots.
 - English/Russian interface, color and threshold settings, frame limit, windowed mode and custom messages.
 - Cached static scene, batched dot drawing, bounded decoding queue and signal cleanup.
-- Experimental Hyprland/Gamescope capture for Lutris and Prism Launcher.
+- Desktop-independent headless Gamescope/PipeWire capture for Lutris and Prism Launcher.
+- Bash, Zsh and Fish support, with shell-specific PATH instructions.
 - Included Bad Apple sample, short renderer recording, bilingual documentation and issue forms.
 - Integration tests, Ubuntu 22.04/24.04 CI, installable x86_64 archive and Debian package.
 
@@ -18,6 +19,7 @@
 - Локальное видео в имитации паники ядра с точками в стиле Брайля.
 - Интерфейс EN/RU, цвета, порог яркости, лимит FPS, оконный режим и свой текст ошибки.
 - Кэширование статичной сцены, пакетная отрисовка точек, ограниченная очередь кадров и обработка сигналов.
-- Экспериментальный захват Hyprland/Gamescope для Lutris и Prism Launcher.
+- Независимый от рабочего стола захват Gamescope/PipeWire для Lutris и Prism Launcher.
+- Поддержка Bash, Zsh и Fish с инструкциями настройки PATH.
 - Пример Bad Apple, короткая запись рендерера, двуязычная документация и формы issue.
 - Интеграционные тесты, CI Ubuntu 22.04/24.04, установочный архив x86_64 и пакет Debian.
