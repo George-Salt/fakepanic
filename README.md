@@ -23,7 +23,7 @@ Fake Panic (`fakepanic`) plays local videos inside a fullscreen, blue Linux pani
 The image becomes a monochrome grid of Braille-style dots, with ASCII Tux and fictional
 error messages around it. **It runs in user space; it does not crash your kernel. Press Esc to exit.**
 
-The presentation captures the actual renderer in an isolated X11 display: Bad Apple in its native 4:3 frame, with the default blue and custom mint colors.
+The presentation captures the actual renderer in an isolated X11 display: a continuous middle section of Bad Apple (around 2:33–2:47), in its native 4:3 frame on the default blue background.
 The supplied [Bad Apple video](examples/bad-apple.mp4) lets you reproduce the effect.
 Video playback supports X11 and Wayland through SDL2. An experimental game mode captures
 Lutris or Prism Launcher through headless Gamescope and PipeWire, independently of the host desktop.
