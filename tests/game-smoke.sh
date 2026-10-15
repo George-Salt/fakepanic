@@ -21,6 +21,6 @@ env -u HYPRLAND_INSTANCE_SIGNATURE -u WAYLAND_DISPLAY -u DISPLAY \
 frames="$(sed -n 's/^\[stats\] frames=\([0-9]*\)$/\1/p' "$RUN_DIR/state/fakepanic/fakepanic.log" | tail -1)"
 [[ "$frames" =~ ^[0-9]+$ ]] && (( frames > 0 ))
 if ! grep -q 'ready on' "$RUN_DIR/state/fakepanic/fakepanic.log"; then
-  echo 'Nested input unavailable / Вложенный ввод не подключён' >&2; exit 1
+  echo 'Nested input unavailable' >&2; exit 1
 fi
-printf 'Game capture passed / Захват работает: %s frames / кадров\n' "$frames"
+printf 'Game capture passed: %s frames\n' "$frames"

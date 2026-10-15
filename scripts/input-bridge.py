@@ -8,12 +8,16 @@ import time
 from pathlib import Path
 
 
+def tr(en, ru):
+    return ru if os.getenv("FAKEPANIC_LANG") == "ru" else en
+
+
 def game_display():
     if os.getenv('FAKEPANIC_GAME_DISPLAY'):
         return os.environ['FAKEPANIC_GAME_DISPLAY']
     root = int(os.environ.get('FAKEPANIC_GAMESCOPE_PID', '0'))
     if root <= 1:
-        raise RuntimeError('Gamescope PID required / Требуется PID Gamescope')
+        raise RuntimeError(tr('Gamescope PID required', 'Требуется PID Gamescope'))
     candidates = []
     host_display = os.getenv('DISPLAY', '')
     for proc in Path('/proc').iterdir():
@@ -38,8 +42,8 @@ def game_display():
             continue
     displays = set(candidates)
     if len(displays) != 1:
-        raise RuntimeError('Cannot identify one nested DISPLAY; set FAKEPANIC_GAME_DISPLAY / '
-                           'Не удалось определить DISPLAY; задайте FAKEPANIC_GAME_DISPLAY')
+        raise RuntimeError(tr('Cannot identify one nested DISPLAY; set FAKEPANIC_GAME_DISPLAY',
+                              'Не удалось определить DISPLAY; задайте FAKEPANIC_GAME_DISPLAY'))
     return displays.pop()
 
 
@@ -54,7 +58,7 @@ def main():
                 raise
             time.sleep(0.1)
     if display == os.getenv('DISPLAY') and not os.getenv('FAKEPANIC_ALLOW_HOST_X11'):
-        raise RuntimeError('Refusing desktop input / Ввод в основной рабочий стол запрещён')
+        raise RuntimeError(tr('Refusing desktop input', 'Ввод в основной рабочий стол запрещён'))
     x11 = ctypes.CDLL(ctypes.util.find_library('X11') or 'libX11.so.6')
     xtst = ctypes.CDLL(ctypes.util.find_library('Xtst') or 'libXtst.so.6')
     x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
@@ -70,7 +74,7 @@ def main():
     xtst.XTestFakeMotionEvent.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulong]
     connection = x11.XOpenDisplay(display.encode())
     if not connection:
-        raise RuntimeError(f'Cannot connect / Не удалось подключиться: {display}')
+        raise RuntimeError(tr(f'Cannot connect: {display}', f'Не удалось подключиться: {display}'))
     held = set()
     aliases = {'up': 'Up', 'down': 'Down', 'left': 'Left', 'right': 'Right',
                'enter': 'Return', 'backspace': 'BackSpace', 'tab': 'Tab',
@@ -81,7 +85,8 @@ def main():
     def keycode(name):
         symbol = aliases.get(name, name)
         return x11.XKeysymToKeycode(connection, x11.XStringToKeysym(symbol.encode()))
-    print(f'[input] ready on {display}; keyboard and mouse enabled / клавиатура и мышь подключены', file=sys.stderr, flush=True)
+    print(tr(f'[input] ready on {display}; keyboard and mouse enabled',
+             f'[input] подключён {display}; клавиатура и мышь готовы'), file=sys.stderr, flush=True)
     try:
         for line in sys.stdin:
             parts = line.strip().split()

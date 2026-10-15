@@ -6,6 +6,8 @@
 #include <cerrno>
 #include <cctype>
 #include <cstring>
+#include <cmath>
+#include <sstream>
 #include <chrono>
 #include <condition_variable>
 #include <csignal>
@@ -69,10 +71,56 @@ struct Child {
     ~Child() { finish(); }
 };
 
+static double videoAspect(const std::string& path) {
+    int fds[2];
+    if (pipe2(fds, O_CLOEXEC) != 0) throw std::runtime_error("pipe2");
+    Child probe;
+    try {
+        probe.pid = spawn({"ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                           "stream=width,height,sample_aspect_ratio:stream_side_data=rotation",
+                           "-of", "default=noprint_wrappers=1", path}, -1, fds[1]);
+    } catch (...) { close(fds[0]); close(fds[1]); throw; }
+    close(fds[1]);
+    std::string output;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!interrupted && std::chrono::steady_clock::now() < deadline && output.size() < 4096) {
+        pollfd descriptor{fds[0], POLLIN | POLLHUP, 0};
+        if (poll(&descriptor, 1, 50) <= 0) continue;
+        char buffer[512];
+        auto count = read(fds[0], buffer, sizeof(buffer));
+        if (count <= 0) break;
+        output.append(buffer, size_t(count));
+    }
+    close(fds[0]);
+    if (probe.finish(false) != 0) throw std::runtime_error(tr("Video probing failed", "Не удалось определить параметры видео"));
+    double width = 0, height = 0, sar = 1, rotation = 0;
+    std::istringstream lines(output);
+    std::string line;
+    while (std::getline(lines, line)) {
+        auto equals = line.find('=');
+        if (equals == std::string::npos) continue;
+        auto key = line.substr(0, equals), value = line.substr(equals + 1);
+        if (key == "width") width = std::stod(value);
+        else if (key == "height") height = std::stod(value);
+        else if (key == "rotation") rotation = std::stod(value);
+        else if (key == "sample_aspect_ratio") {
+            auto colon = value.find(':');
+            if (colon != std::string::npos) {
+                double numerator = std::stod(value.substr(0, colon)), denominator = std::stod(value.substr(colon + 1));
+                if (numerator > 0 && denominator > 0) sar = numerator / denominator;
+            }
+        }
+    }
+    double aspect = width * sar / height;
+    if (std::abs(std::remainder(rotation, 180.0)) > 45) aspect = 1.0 / aspect;
+    if (!std::isfinite(aspect) || aspect <= 0) throw std::runtime_error(tr("Video probing failed: invalid dimensions", "Некорректные размеры видео"));
+    return aspect;
+}
+
 struct Options {
     bool game = false, mute = false, windowed = false, stats = false;
     int width = 1280, height = 720, fps = 24, threshold = 128;
-    double duration = 0;
+    double duration = 0, aspect = 16.0 / 9.0;
     SDL_Color background{0, 0, 170, 255}, foreground{255, 255, 255, 255};
     std::string path, font, reason;
 };
@@ -95,7 +143,7 @@ static SDL_Color color(std::string value) {
 static void help() {
     std::cout << "Fake Panic " << FAKEPANIC_VERSION << "\n"
         << tr("Usage: fakepanic --video FILE [options]\n", "Использование: fakepanic --video ФАЙЛ [параметры]\n")
-        << "  --lang en|ru                 " << tr("Language", "Язык") << "\n"
+        << "  --lang en|ru                 " << tr("Language (default: en)", "Язык (по умолчанию en)") << "\n"
         << "  --mute                       " << tr("Disable audio", "Без звука") << "\n"
         << "  --reason TEXT                " << tr("Panic message", "Текст ошибки") << "\n"
         << "  --windowed --size 1280x720    " << tr("Window instead of fullscreen", "Оконный режим") << "\n"
@@ -147,6 +195,9 @@ static Options parse(int argc, char** argv) {
     } else if (o.path.empty() || !std::filesystem::is_regular_file(o.path)) {
         throw std::runtime_error(tr("Video not found: ", "Видео не найдено: ") + o.path);
     } else o.path = std::filesystem::absolute(o.path).string();
+    if (!o.game) o.aspect = videoAspect(o.path);
+    else if (!env("FAKEPANIC_CAPTURE_WIDTH").empty() && !env("FAKEPANIC_CAPTURE_HEIGHT").empty())
+        o.aspect = number(env("FAKEPANIC_CAPTURE_WIDTH"), 320, 3840) / double(number(env("FAKEPANIC_CAPTURE_HEIGHT"), 240, 2160));
     if (o.reason.empty()) o.reason = "Kernel panic - not syncing: Fatal exception";
     return o;
 }
@@ -167,11 +218,15 @@ struct Video {
     std::condition_variable changed;
     std::deque<std::vector<Uint8>> frames;
     std::thread reader;
-    void start(const Options& o, int w, int h, double offset = 0) {
+    void start(const Options& o, int w, int h, int displayW, int displayH, double offset = 0) {
         int fds[2];
         if (pipe2(fds, O_CLOEXEC) != 0) throw std::runtime_error("pipe2");
-        std::string filter = "scale=" + std::to_string(w) + ":" + std::to_string(h) +
-            ":force_original_aspect_ratio=decrease:flags=area,pad=" + std::to_string(w) + ":" + std::to_string(h) + ":(ow-iw)/2:(oh-ih)/2,format=gray";
+        const double viewportAspect = double(displayW) / displayH;
+        int contentW = w, contentH = h;
+        if (o.aspect > viewportAspect) contentH = std::max(1, int(std::lround(h * viewportAspect / o.aspect)));
+        else contentW = std::max(1, int(std::lround(w * o.aspect / viewportAspect)));
+        std::string filter = "scale=" + std::to_string(contentW) + ":" + std::to_string(contentH) +
+            ":flags=area,format=gray,pad=" + std::to_string(w) + ":" + std::to_string(h) + ":(ow-iw)/2:(oh-ih)/2";
         if (!o.game) filter = "fps=" + std::to_string(o.fps) + "," + filter;
         std::vector<std::string> args{"ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"};
         if (o.game && !env("FAKEPANIC_PIPEWIRE_NODE").empty()) {
@@ -182,7 +237,7 @@ struct Video {
             args = {"gst-launch-1.0", "-q", "pipewiresrc", "target-object=" + serial, "do-timestamp=true",
                     "!", "queue", "leaky=downstream", "max-size-buffers=2", "max-size-bytes=0", "max-size-time=0",
                     "!", "videoscale", "method=1", "add-borders=true", "!", "videoconvert", "!",
-                    "video/x-raw,format=GRAY8,width=" + std::to_string(w) + ",height=" + std::to_string(h) + ",pixel-aspect-ratio=1/1",
+                    "video/x-raw,format=GRAY8,width=" + std::to_string(w) + ",height=" + std::to_string(h) + ",pixel-aspect-ratio=" + std::to_string(displayW * h) + "/" + std::to_string(displayH * w),
                     "!", "fdsink", "fd=1", "sync=false"};
         } else {
             if (o.game) args.insert(args.end(), {"-fflags", "nobuffer", "-flags", "low_delay", "-probesize", "32768", "-analyzeduration", "100000"});
@@ -326,7 +381,7 @@ static int run(const Options& o) {
     if (!s.renderer) s.renderer = SDL_CreateRenderer(s.window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE);
     if (!s.renderer) throw std::runtime_error(SDL_GetError());
     int w = 0, h = 0, dot = 0, pitch = 0, cellW = 0, cellH = 0;
-    int cellsX = 0, cellsY = 0, cols = 0, rows = 0, boxW = 0, boxH = 0, boxX = 0, boxY = 0;
+    int cellsX = 0, cellsY = 0, cols = 0, rows = 0, boxW = 0, boxH = 0, boxX = 0, boxY = 0, innerW = 0, innerH = 0;
     const int pad = 6;
     auto rebuild = [&] {
         SDL_GetRendererOutputSize(s.renderer, &w, &h);
@@ -339,10 +394,14 @@ static int run(const Options& o) {
         TTF_SetFontHinting(s.font, TTF_HINTING_MONO);
         dot = std::clamp(h / 330, 2, 5); pitch = dot * 2;
         cellW = pitch * 2 + dot; cellH = pitch * 4 + dot;
-        cellsX = std::max(18, std::min(int(w * 0.48), w - 40) / cellW / 2 * 2);
-        cellsY = std::max(12, std::min(int(h * 0.49) / cellH, cellsX * cellW * 9 / (16 * cellH)));
+        int referenceCellsX = std::max(18, std::min(int(w * 0.48), w - 40) / cellW / 2 * 2);
+        cellsY = std::max(12, std::min(int(h * 0.49) / cellH, referenceCellsX * cellW * 9 / (16 * cellH)));
+        innerH = cellsY * cellH;
+        int widthLimit = std::max(1, w - 40 - 2 * pad);
+        innerW = int(std::lround(std::clamp(innerH * o.aspect, 1.0, double(widthLimit))));
+        cellsX = std::max(2, int(std::lround(double(innerW) / cellW / 2)) * 2);
         cols = cellsX * 2; rows = cellsY * 4;
-        boxW = cellsX * cellW + pad * 2; boxH = cellsY * cellH + pad * 2;
+        boxW = innerW + pad * 2; boxH = innerH + pad * 2;
         boxX = (w - boxW) / 2; boxY = (h - boxH) / 2;
         s.backdrop = SDL_CreateTexture(s.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
         if (!s.backdrop) throw std::runtime_error(SDL_GetError());
@@ -364,7 +423,7 @@ static int run(const Options& o) {
         SDL_RenderSetViewport(s.renderer, nullptr);
     };
     rebuild();
-    auto video = std::make_unique<Video>(); video->start(o, cols, rows);
+    auto video = std::make_unique<Video>(); video->start(o, cols, rows, innerW, innerH);
     Input input; if (o.game) input.start();
     Child audio;
     std::vector<Uint8> pixels(size_t(cols * rows), 0);
@@ -408,7 +467,7 @@ static int run(const Options& o) {
             rebuild();
             pixels.assign(size_t(cols * rows), 0);
             dots.clear(); dots.reserve(pixels.size());
-            video = std::make_unique<Video>(); video->start(o, cols, rows, frames / double(o.fps));
+            video = std::make_unique<Video>(); video->start(o, cols, rows, innerW, innerH, frames / double(o.fps));
             painted = false; gotFrame = false; nextFrame = now; awaitingSince = now;
         }
         if (o.duration && std::chrono::duration<double>(now - launched).count() >= o.duration) break;
@@ -436,7 +495,7 @@ static int run(const Options& o) {
             constexpr int pattern[4][2]{{-16, 16}, {32, -32}, {0, 48}, {24, -8}};
             for (int py = 0; py < rows; ++py) for (int px = 0; px < cols; ++px)
                 if (int(pixels[size_t(py * cols + px)]) >= std::clamp(o.threshold + pattern[py % 4][px % 2], 0, 255))
-                    dots.push_back({boxX + pad + (px / 2) * cellW + (px % 2) * pitch, boxY + pad + (py / 4) * cellH + (py % 4) * pitch, dot, dot});
+                    dots.push_back({boxX + pad + px * std::max(0, innerW - dot) / std::max(1, cols - 1), boxY + pad + (py / 4) * cellH + (py % 4) * pitch, std::min(dot, innerW), dot});
             if (!dots.empty()) SDL_RenderFillRects(s.renderer, dots.data(), int(dots.size()));
             if (!gotFrame) s.text("Waiting for video...", w / 2, boxY + boxH / 2, o.foreground);
             SDL_RenderPresent(s.renderer);
@@ -453,8 +512,7 @@ static int run(const Options& o) {
 }
 
 int main(int argc, char** argv) {
-    auto locale = env("LC_ALL"); if (locale.empty()) locale = env("LC_MESSAGES"); if (locale.empty()) locale = env("LANG");
-    russian = locale.rfind("ru", 0) == 0;
+    russian = false;
     for (int i = 1; i + 1 < argc; ++i) if (std::string(argv[i]) == "--lang") russian = std::string(argv[i + 1]) == "ru";
     signal(SIGPIPE, SIG_IGN); signal(SIGINT, onSignal); signal(SIGTERM, onSignal);
     try { if (argc == 1) { help(); return 0; } return run(parse(argc, argv)); }

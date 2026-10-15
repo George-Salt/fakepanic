@@ -52,8 +52,8 @@ For the archive, run from the directory containing the downloaded file:
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing  # download SHA256SUMS too
 mkdir -p fakepanic-release
-tar -xzf fakepanic-1.0.1-linux-x86_64.tar.gz -C fakepanic-release
-cd fakepanic-release/fakepanic-1.0.1-linux-x86_64
+tar -xzf fakepanic-1.0.2-linux-x86_64.tar.gz -C fakepanic-release
+cd fakepanic-release/fakepanic-1.0.2-linux-x86_64
 ./install.sh
 ~/.local/bin/fakepanic --version
 ```
@@ -66,7 +66,7 @@ You can also run `./bin/fakepanic` directly from the extracted archive.
 For a `.deb`, let APT resolve dependencies:
 
 ```bash
-sudo apt install ./fakepanic-1.0.1-linux-x86_64.deb
+sudo apt install ./fakepanic-1.0.2-linux-x86_64.deb
 fakepanic --version
 ```
 
@@ -127,7 +127,7 @@ No network access is needed during playback.
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `--lang en\|ru` | Locale (`ru*` → Russian) | Help and console messages; the panic screen always stays English |
+| `--lang en\|ru` | `en` (regardless of system locale) | Help and console messages; the panic screen always stays English |
 | `--background RRGGBB` | `0000AA` | Background color; `#RRGGBB` also works when quoted |
 | `--foreground RRGGBB` | `FFFFFF` | Text, border and dots |
 | `--threshold 0…255` | `128` | Lower values produce more lit dots; ordered dithering preserves detail |
@@ -152,9 +152,9 @@ fakepanic --help
 fakepanic --lang ru --help
 ```
 
-The video keeps its aspect ratio with padding. Dots are drawn directly, so the effect
+The frame width follows the video’s display aspect ratio while its height stays fixed for the current window size. Bad Apple uses a 4:3 frame. Width is capped with a 20-pixel margin on either side of the window; very wide videos are fitted inside that limit without cropping. Sample aspect ratio and rotation metadata are respected. Dots are drawn directly, so the effect
 does not depend on Braille font glyphs. The dot grid and text are rebuilt when the window or fullscreen resolution changes. The panic screen always uses English; `--lang` only affects help and console messages.
-Third-party tools may print their own messages in English.
+Console output defaults to English, including the launcher and installer. Use `--lang ru` for Russian messages, without duplicated translations. Third-party tools may print their own messages in English.
 
 ## Shells and desktops
 

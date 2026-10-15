@@ -20,7 +20,7 @@ Install dependencies from the README, then run / Установите завис
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
-shellcheck install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh tests/game-smoke.sh
+shellcheck install.sh scripts/fakepanic scripts/start-game.sh scripts/messages.sh packaging/package.sh tests/game-smoke.sh
 python3 -m py_compile scripts/input-bridge.py tests/integration.py
 ```
 
@@ -37,3 +37,37 @@ capture path using synthetic video, without a desktop session or a real game.
 
 С игровыми зависимостями `tests/game-smoke.sh` проверяет полный тракт захвата
 на синтетическом видео без сеанса рабочего стола и настоящей игры.
+
+## Commit messages / Сообщения коммитов
+
+Use **Conventional Commits** with a concise English subject in the imperative:
+`type(scope): description`. Keep the subject within 72 characters. The scope is optional
+for project-wide changes. Explain the reason and validation in the body when useful.
+
+Используем **Conventional Commits**: `тип(область): описание`. Заголовок — короткий,
+на английском, в повелительной форме, до 72 символов. Для изменений всего проекта
+область необязательна. В теле при необходимости укажите причину и выполненные проверки.
+
+| Type | Purpose / Назначение |
+| --- | --- |
+| `feat` | New behavior / Новое поведение |
+| `fix` | Bug fix / Исправление ошибки |
+| `refactor` | Restructure without behavior changes / Перестройка без изменения поведения |
+| `perf` | Performance improvement / Ускорение |
+| `test` | Tests / Тесты |
+| `docs` | Documentation and demonstration media / Документация и демонстрационные записи |
+| `build` | Build and packaging / Сборка и упаковка |
+| `ci` | Automation / Автоматизация |
+| `chore` | Maintenance / Обслуживание |
+
+Scopes / Области: `renderer`, `cli`, `game`, `media`, `release`.
+
+```text
+fix(renderer): fit the video frame to its display aspect ratio
+feat(cli): add a playback option
+docs(media): refresh the presentation recording
+build(release): prepare version 1.0.2
+```
+
+Keep code fixes and refreshed recordings in separate commits. Do not rewrite published history.
+Изменения кода и обновления записей оформляйте отдельными коммитами. Опубликованную историю не переписывайте.

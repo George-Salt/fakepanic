@@ -38,9 +38,10 @@ class Integration(unittest.TestCase):
         return result.stdout + result.stderr
 
     def test_help_and_languages(self):
+        self.assertIn('Usage:', self.run_app('--help', env=dict(ENV, LANG='ru_RU.UTF-8', LC_ALL='ru_RU.UTF-8')))
         self.assertIn('Usage:', self.run_app('--lang', 'en', '--help'))
         self.assertIn('Использование:', self.run_app('--lang', 'ru', '--help'))
-        self.assertIn('1.0.1', self.run_app('--version'))
+        self.assertIn('1.0.2', self.run_app('--version'))
 
     def test_argument_validation(self):
         for args in [('--fps', '0'), ('--fps', '121'), ('--fps', '24x'),
@@ -87,6 +88,8 @@ class Integration(unittest.TestCase):
         prefix = Path(self.temp.name) / 'prefix with spaces'
         (prefix / 'share/fakepanic').mkdir(parents=True)
         (prefix / 'bin').mkdir()
+        (prefix / 'share/fakepanic/scripts').mkdir()
+        shutil.copy2(ROOT / 'scripts/messages.sh', prefix / 'share/fakepanic/scripts/messages.sh')
         (prefix / 'share/fakepanic/fakepanic-renderer').symlink_to(BINARY)
         launcher = prefix / 'bin/fakepanic'
         launcher.write_bytes((ROOT / 'scripts/fakepanic').read_bytes())
@@ -97,6 +100,10 @@ class Integration(unittest.TestCase):
         result = subprocess.run([str(launcher), '--lutris', 'abc'], env=ENV,
                                 capture_output=True, timeout=3)
         self.assertEqual(result.returncode, 2)
+        self.assertNotRegex(result.stderr.decode(), r'[А-Яа-я]')
+        translated = subprocess.run([str(launcher), '--lutris', 'abc', '--lang', 'ru'], env=ENV, capture_output=True, timeout=3)
+        self.assertIn('числовой', translated.stderr.decode())
+        self.assertNotIn('numeric', translated.stderr.decode())
         for shell in ('bash', 'zsh', 'fish'):
             if not shutil.which(shell):
                 continue

@@ -9,24 +9,25 @@ if [[ ! -x "$DATA/fakepanic-renderer" && -x "$(dirname -- "$SELF")/../build/fake
 else
   BIN="$DATA/fakepanic-renderer"
 fi
-[[ -x "$BIN" ]] || { echo 'Renderer missing. Run ./install.sh / Запустите ./install.sh' >&2; exit 1; }
+source "$DATA/scripts/messages.sh"
+[[ -x "$BIN" ]] || { say 'Renderer missing. Run ./install.sh' 'Рендерер не найден. Запустите ./install.sh' >&2; exit 1; }
 args=(); mode=''; target=''
 while (( $# )); do
   case "$1" in
     --lutris|--prism)
-      [[ -z "$mode" && $# -ge 2 && -n "$2" && "$2" != -* ]] || { echo 'Expected one game target / Укажите одну игру' >&2; exit 2; }
+      [[ -z "$mode" && $# -ge 2 && -n "$2" && "$2" != -* ]] || { say 'Expected one game target' 'Укажите одну игру' >&2; exit 2; }
       mode="${1#--}"; target="$2"; shift 2 ;;
     --capture-size)
-      [[ $# -ge 2 && "$2" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]] || { echo 'Expected WIDTHxHEIGHT / Ожидается ШИРИНАxВЫСОТА' >&2; exit 2; }
+      [[ $# -ge 2 && "$2" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]] || { say 'Expected WIDTHxHEIGHT' 'Ожидается ШИРИНАxВЫСОТА' >&2; exit 2; }
       export FAKEPANIC_CAPTURE_WIDTH="${2%x*}" FAKEPANIC_CAPTURE_HEIGHT="${2#*x}"; shift 2 ;;
     --video|--reason|--lang|--font|--size|--fps|--duration|--threshold|--background|--foreground)
-      [[ $# -ge 2 ]] || { echo "Missing value / Нет значения: $1" >&2; exit 2; }
+      [[ $# -ge 2 ]] || { say "Missing value: %s" "Нет значения: %s" "$1" >&2; exit 2; }
       args+=("$1" "$2"); shift 2 ;;
     *) args+=("$1"); shift ;;
   esac
 done
 if [[ -n "$mode" ]]; then
-  [[ "$mode" != lutris || "$target" =~ ^[0-9]+$ ]] || { echo 'Lutris: numeric ID / числовой ID' >&2; exit 2; }
+  [[ "$mode" != lutris || "$target" =~ ^[0-9]+$ ]] || { say 'Lutris: numeric ID required' 'Lutris: нужен числовой ID' >&2; exit 2; }
   export FAKEPANIC_ROOT="$DATA" FAKEPANIC_BIN="$BIN" FAKEPANIC_LAUNCHER="$mode" FAKEPANIC_TARGET="$target"
   exec "$DATA/scripts/start-game.sh" "${args[@]}"
 fi

@@ -1,5 +1,23 @@
 # Changelog / История изменений
 
+## 1.0.2 — 2026-10-15
+
+### English
+
+- Adapt the video frame width to its display aspect ratio while preserving its height.
+- Cap width within the window, with 20-pixel side margins and no cropping.
+- Respect sample aspect ratio and rotation metadata; remove unnecessary 16:9 padding for Bad Apple.
+- Default to English console output; select Russian explicitly with `--lang ru`, without duplicate translations.
+- Standardize future commit messages with Conventional Commits.
+
+### Русский
+
+- Ширина рамки подстраивается под пропорции ролика при прежней высоте.
+- Ширина ограничена окном с отступами 20 пикселей, без обрезания содержимого.
+- Учитываются пропорции пикселя и поворот; у Bad Apple нет лишних полей от рамки 16:9.
+- Консоль по умолчанию на английском; русский включается через `--lang ru`, без дублирования переводов.
+- Для новых коммитов принят формат Conventional Commits.
+
 ## 1.0.1 — 2026-10-15
 
 ### English

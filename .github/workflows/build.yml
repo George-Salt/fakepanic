@@ -25,8 +25,8 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: Script checks
         run: |
-          bash -n install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh tests/game-smoke.sh
-          shellcheck install.sh scripts/fakepanic scripts/start-game.sh packaging/package.sh tests/game-smoke.sh
+          bash -n install.sh scripts/fakepanic scripts/start-game.sh scripts/messages.sh packaging/package.sh tests/game-smoke.sh
+          shellcheck install.sh scripts/fakepanic scripts/start-game.sh scripts/messages.sh packaging/package.sh tests/game-smoke.sh
           python3 -m py_compile scripts/input-bridge.py tests/integration.py
       - name: Build installable packages
         if: matrix.os == 'ubuntu-22.04'
