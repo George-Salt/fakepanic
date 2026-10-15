@@ -56,6 +56,13 @@ class Integration(unittest.TestCase):
         result = self.run_app(self.clip, '--mute', '--windowed', '--size', '640x480', '--stats')
         self.assertIn('frames=24', result)
 
+    def test_video_loop(self):
+        result = self.run_app('--video', self.clip, '--loop', '--mute', '--duration', '3', '--stats')
+        frames = int(result.rsplit('frames=', 1)[1].split()[0])
+        self.assertGreater(frames, 48, result)
+        self.run_app('--video', self.bad, '--loop', '--mute', expected=1)
+        self.run_app('--game-stream', '--loop', expected=1)
+
     def test_customization(self):
         self.run_app('--video', self.clip, '--mute', '--lang', 'ru', '--reason',
                      'Проверка', '--background', '#111827', '--foreground', 'A7F3D0',

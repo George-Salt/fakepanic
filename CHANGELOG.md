@@ -2,6 +2,9 @@
 
 ## Unreleased / Не выпущено
 
+- Add `--loop` to repeat video and audio until closed.
+- Добавлен `--loop` для повтора видео и звука до закрытия.
+
 - Keep two timestamped diagnostic lines, set the CPU timestamp to `142.881093`, and show a reboot instruction after a blank line.
 - Оставлены две диагностические строки; время строки CPU — `142.881093`, после пустой строки добавлена просьба перезагрузить компьютер.
 

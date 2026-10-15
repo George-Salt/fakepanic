@@ -118,7 +118,7 @@ static double videoAspect(const std::string& path) {
 }
 
 struct Options {
-    bool game = false, mute = false, windowed = false, stats = false;
+    bool game = false, mute = false, windowed = false, stats = false, loop = false;
     int width = 1280, height = 720, fps = 24, threshold = 128;
     double duration = 0, aspect = 16.0 / 9.0;
     SDL_Color background{0, 0, 170, 255}, foreground{255, 255, 255, 255};
@@ -144,6 +144,7 @@ static void help() {
     std::cout << "Fake Panic " << FAKEPANIC_VERSION << "\n"
         << tr("Usage: fakepanic --video FILE [options]\n", "Использование: fakepanic --video ФАЙЛ [параметры]\n")
         << "  --lang en|ru                 " << tr("Language (default: en)", "Язык (по умолчанию en)") << "\n"
+        << "  --loop                       " << tr("Repeat video until closed", "Повторять видео до закрытия") << "\n"
         << "  --mute                       " << tr("Disable audio", "Без звука") << "\n"
         << "  --reason TEXT                " << tr("Panic message", "Текст ошибки") << "\n"
         << "  --windowed --size 1280x720    " << tr("Window instead of fullscreen", "Оконный режим") << "\n"
@@ -170,6 +171,7 @@ static Options parse(int argc, char** argv) {
         else if (a == "--game-stream") o.game = true;
         else if (a == "--video") o.path = value();
         else if (a == "--mute") o.mute = true;
+        else if (a == "--loop") o.loop = true;
         else if (a == "--windowed") o.windowed = true;
         else if (a == "--stats") o.stats = true;
         else if (a == "--reason") o.reason = value();
@@ -188,6 +190,7 @@ static Options parse(int argc, char** argv) {
         else if (!a.empty() && a[0] != '-' && o.path.empty()) o.path = a;
         else throw std::runtime_error(tr("Unknown option: ", "Неизвестный параметр: ") + a);
     }
+    if (o.game && o.loop) throw std::runtime_error("--loop requires video playback");
     if (o.game) {
         o.path = env("FAKEPANIC_STREAM");
         if (!env("FAKEPANIC_PIPEWIRE_NODE").empty()) o.path = "pipewire:" + env("FAKEPANIC_PIPEWIRE_NODE");
@@ -440,7 +443,7 @@ static int run(const Options& o) {
     std::vector<Uint8> pixels(size_t(cols * rows), 0);
     std::vector<SDL_Rect> dots; dots.reserve(pixels.size());
     bool gotFrame = false, running = true, audioStarted = false, failed = false;
-    uint64_t frames = 0;
+    uint64_t frames = 0, cycleFrames = 0;
     auto launched = std::chrono::steady_clock::now(), playback = launched, statsAt = launched;
     auto nextFrame = launched, awaitingSince = launched;
     bool painted = false;
@@ -478,7 +481,7 @@ static int run(const Options& o) {
             rebuild();
             pixels.assign(size_t(cols * rows), 0);
             dots.clear(); dots.reserve(pixels.size());
-            video = std::make_unique<Video>(); video->start(o, cols, rows, innerW, innerH, frames / double(o.fps));
+            video = std::make_unique<Video>(); video->start(o, cols, rows, innerW, innerH, cycleFrames / double(o.fps));
             painted = false; gotFrame = false; nextFrame = now; awaitingSince = now;
         }
         if (o.duration && std::chrono::duration<double>(now - launched).count() >= o.duration) break;
@@ -491,10 +494,17 @@ static int run(const Options& o) {
                     audioStarted = true;
                     audio.pid = spawn({"ffplay", "-nodisp", "-autoexit", "-vn", "-loglevel", "error", "-nostats", "-i", o.path});
                 }
-                ++frames;
+                ++frames; ++cycleFrames;
                 nextFrame += std::chrono::microseconds(1000000 / o.fps);
                 if (nextFrame < now) nextFrame = now;
-            } else if (video->ended) { failed = video->child.finish(false) != 0 || !gotFrame; break; }
+            } else if (video->ended) {
+                failed = video->child.finish(false) != 0 || !gotFrame;
+                if (failed || !o.loop) break;
+                audio.finish(); audioStarted = false;
+                video.reset();
+                video = std::make_unique<Video>(); video->start(o, cols, rows, innerW, innerH);
+                cycleFrames = 0; gotFrame = false; nextFrame = now; awaitingSince = now;
+            }
         }
         if (!gotFrame && std::chrono::duration<double>(now - awaitingSince).count() > 20) { failed = true; break; }
         if (updated || !painted) {

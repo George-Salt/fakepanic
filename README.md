@@ -136,6 +136,7 @@ No network access is needed during playback.
 | `--size WIDTHxHEIGHT` | `1280x720` | Window size, from `640x480` to `7680x4320` |
 | `--reason TEXT` | Fictional fatal exception | Custom error line, including Russian text |
 | `--font FILE` | DejaVu Sans Mono | Custom monospace TTF font |
+| `--loop` | Off | Repeat video and audio until closed; `--duration` still limits total runtime |
 | `--mute` | Sound on | Disable FFplay audio |
 | `--duration SECONDS` | Whole video | Stop after 1–86400 seconds, including startup time |
 | `--stats` | Off | Print frame count and average playback FPS to stderr |
