@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory() as directory:
             assert '[  142.857001] Kernel Offset: disabled' in text
             assert '[  142.881093] CPU: 0 PID: 0 Comm: swapper/0 Not tainted' in text
             assert 'Memory Limit:' not in text
-            assert 'Please reboot your computer.' in text
+            assert 'Please reboot your computer!' in text
             for frame, expected in [(3, (640, 480)), (10, (960, 540)), (18, (1024, 768))]:
                 data = (output / f'{frame}.ppm').read_bytes()
                 header, dimensions, maximum, pixels = data.split(b'\n', 3)

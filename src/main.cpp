@@ -429,7 +429,7 @@ static int run(const Options& o) {
             s.text(text, (w - textWidth) / 2, y, o.foreground, false); y += line + 5;
         }
         y += line + 5;
-        s.text("Please reboot your computer.", (w - textWidth) / 2, y, o.foreground, false);
+        s.text("Please reboot your computer!", w / 2, y, o.foreground);
         SDL_SetRenderTarget(s.renderer, nullptr);
         SDL_RenderSetViewport(s.renderer, nullptr);
     };
