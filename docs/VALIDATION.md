@@ -5,6 +5,7 @@
 Every push and pull request runs `.github/workflows/build.yml` on Ubuntu 22.04 and 24.04:
 
 - C++17 Release build with compiler warnings treated as errors.
+- Pixel-level checks after window resizing and fullscreen: centered video, exact two-color rendering and identical English panic screens for EN/RU locales.
 - Real FFmpeg decoding of synthetic video: exact frame count, custom colors and Russian text.
 - Invalid arguments, unavailable files and corrupt media return errors.
 - SIGTERM interrupts a blocked live stream and leaves no decoder child process.
@@ -16,6 +17,7 @@ Every push and pull request runs `.github/workflows/build.yml` on Ubuntu 22.04 a
 Каждый push и pull request проверяется на Ubuntu 22.04 и 24.04:
 
 - Release-сборка C++17; предупреждения компилятора считаются ошибками.
+- Проверка пикселей после изменения окна и перехода в полный экран: центр видео, отсутствие размытых цветов и одинаковый английский экран при EN/RU.
 - Реальное декодирование синтетического видео FFmpeg: число кадров, цвета, русский текст.
 - Ошибки аргументов, отсутствующие и повреждённые файлы возвращают ошибку.
 - SIGTERM прерывает зависший поток без оставшегося дочернего декодера.

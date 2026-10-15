@@ -53,8 +53,8 @@ sudo pacman -S --needed sdl2 sdl2_ttf ffmpeg ttf-dejavu python
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing  # также скачайте SHA256SUMS
 mkdir -p fakepanic-release
-tar -xzf fakepanic-1.0.0-linux-x86_64.tar.gz -C fakepanic-release
-cd fakepanic-release/fakepanic-1.0.0-linux-x86_64
+tar -xzf fakepanic-1.0.1-linux-x86_64.tar.gz -C fakepanic-release
+cd fakepanic-release/fakepanic-1.0.1-linux-x86_64
 ./install.sh
 ~/.local/bin/fakepanic --version
 ```
@@ -67,7 +67,7 @@ cd fakepanic-release/fakepanic-1.0.0-linux-x86_64
 Для `.deb` используйте APT, чтобы он установил зависимости:
 
 ```bash
-sudo apt install ./fakepanic-1.0.0-linux-x86_64.deb
+sudo apt install ./fakepanic-1.0.1-linux-x86_64.deb
 fakepanic --version
 ```
 
@@ -128,7 +128,7 @@ fakepanic --video /usr/share/fakepanic/examples/bad-apple.mp4
 
 | Параметр | По умолчанию | Действие |
 | --- | --- | --- |
-| `--lang en\|ru` | Язык системы (`ru*` → русский) | Справка, интерфейс и сообщения приложения |
+| `--lang en\|ru` | Язык системы (`ru*` → русский) | Справка и сообщения консоли; экран паники всегда на английском |
 | `--background RRGGBB` | `0000AA` | Цвет фона; `#RRGGBB` тоже поддерживается в кавычках |
 | `--foreground RRGGBB` | `FFFFFF` | Цвет текста, рамки и точек |
 | `--threshold 0…255` | `128` | Меньше значение — больше светящихся точек; дизеринг сохраняет детали |
@@ -154,7 +154,7 @@ fakepanic --lang en --help
 ```
 
 Пропорции видео сохраняются с помощью полей. Точки рисуются напрямую и не зависят
-от наличия символов Брайля в шрифте. Сетка подстраивается под размер экрана.
+от наличия символов Брайля в шрифте. При изменении окна или переходе в полный экран сетка и текст пересоздаются под новое разрешение. Экран паники всегда на английском; `--lang` меняет только справку и сообщения консоли.
 Сторонние инструменты могут выводить собственные сообщения на английском.
 
 ## Оболочки и рабочие столы

@@ -1,5 +1,21 @@
 # Changelog / История изменений
 
+## 1.0.1 — 2026-10-15
+
+### English
+
+- Keep the video centered when resizing or entering fullscreen.
+- Rebuild text and dot geometry at the actual output resolution instead of stretching the cached scene.
+- Keep the panic screen in English regardless of locale or `--lang`.
+- Add pixel-level regression checks for resizing, fullscreen, sharpness and language independence.
+
+### Русский
+
+- Видео остаётся по центру при изменении размера окна и переходе в полный экран.
+- Текст и сетка пересоздаются в реальном разрешении вместо растягивания готовой сцены.
+- Экран паники всегда на английском независимо от локали и `--lang`.
+- Добавлены проверки реальных пикселей: размер, центрирование, чёткость и независимость от языка.
+
 ## 1.0.0 — 2026-10-15
 
 ### English

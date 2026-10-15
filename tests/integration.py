@@ -40,7 +40,7 @@ class Integration(unittest.TestCase):
     def test_help_and_languages(self):
         self.assertIn('Usage:', self.run_app('--lang', 'en', '--help'))
         self.assertIn('Использование:', self.run_app('--lang', 'ru', '--help'))
-        self.assertIn('1.0.0', self.run_app('--version'))
+        self.assertIn('1.0.1', self.run_app('--version'))
 
     def test_argument_validation(self):
         for args in [('--fps', '0'), ('--fps', '121'), ('--fps', '24x'),

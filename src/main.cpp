@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <iostream>
 #include <mutex>
+#include <memory>
 #include <poll.h>
 #include <spawn.h>
 #include <stdexcept>
@@ -146,7 +147,7 @@ static Options parse(int argc, char** argv) {
     } else if (o.path.empty() || !std::filesystem::is_regular_file(o.path)) {
         throw std::runtime_error(tr("Video not found: ", "Видео не найдено: ") + o.path);
     } else o.path = std::filesystem::absolute(o.path).string();
-    if (o.reason.empty()) o.reason = tr("Kernel panic - not syncing: Fatal exception", "Kernel panic — синхронизация остановлена: критическое исключение");
+    if (o.reason.empty()) o.reason = "Kernel panic - not syncing: Fatal exception";
     return o;
 }
 
@@ -166,7 +167,7 @@ struct Video {
     std::condition_variable changed;
     std::deque<std::vector<Uint8>> frames;
     std::thread reader;
-    void start(const Options& o, int w, int h) {
+    void start(const Options& o, int w, int h, double offset = 0) {
         int fds[2];
         if (pipe2(fds, O_CLOEXEC) != 0) throw std::runtime_error("pipe2");
         std::string filter = "scale=" + std::to_string(w) + ":" + std::to_string(h) +
@@ -185,6 +186,7 @@ struct Video {
                     "!", "fdsink", "fd=1", "sync=false"};
         } else {
             if (o.game) args.insert(args.end(), {"-fflags", "nobuffer", "-flags", "low_delay", "-probesize", "32768", "-analyzeduration", "100000"});
+            if (!o.game && offset > 0) args.insert(args.end(), {"-ss", std::to_string(offset)});
             args.insert(args.end(), {"-i", o.path, "-filter_threads", "1", "-vf", filter, "-threads", "1", "-f", "rawvideo", "-pix_fmt", "gray", "-an", "-sn", "-"});
         }
         try { child.pid = spawn(args, -1, fds[1]); }
@@ -297,6 +299,7 @@ struct Screen {
         SDL_Surface* surface = TTF_RenderUTF8_Solid(font, s.c_str(), c);
         if (!surface) throw std::runtime_error(TTF_GetError());
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        if (texture) SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest);
         SDL_Rect r{x - (centered ? surface->w / 2 : 0), y, surface->w, surface->h};
         SDL_FreeSurface(surface);
         if (!texture) throw std::runtime_error(SDL_GetError());
@@ -307,42 +310,61 @@ struct Screen {
 static int run(const Options& o) {
     Screen s;
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0 || TTF_Init() != 0) throw std::runtime_error(SDL_GetError());
-    s.window = SDL_CreateWindow("Fake Panic", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, o.width, o.height,
-                                o.windowed ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
+    int windowW = o.width, windowH = o.height;
+    if (!o.windowed) {
+        SDL_DisplayMode desktop{};
+        if (SDL_GetCurrentDisplayMode(0, &desktop) != 0) throw std::runtime_error(SDL_GetError());
+        windowW = desktop.w; windowH = desktop.h;
+    }
+    s.window = SDL_CreateWindow("Fake Panic", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, windowW, windowH,
+                                (o.windowed ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP) | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!s.window) throw std::runtime_error(SDL_GetError());
+    SDL_SetWindowMinimumSize(s.window, 640, 480);
     if (!o.game) SDL_ShowCursor(SDL_DISABLE);
     s.renderer = SDL_CreateRenderer(s.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
     if (!s.renderer) s.renderer = SDL_CreateRenderer(s.window, -1, SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE);
     if (!s.renderer) throw std::runtime_error(SDL_GetError());
-    int w = 0, h = 0; SDL_GetRendererOutputSize(s.renderer, &w, &h);
-    s.font = TTF_OpenFont((o.font.empty() ? findFont() : o.font).c_str(), std::clamp(h / 65, 11, 20));
-    if (!s.font) throw std::runtime_error(TTF_GetError());
-    TTF_SetFontHinting(s.font, TTF_HINTING_MONO);
-    const int dot = std::clamp(h / 330, 2, 5), pitch = dot * 2;
-    const int cellW = pitch * 2 + dot, cellH = pitch * 4 + dot;
-    // GRAY8 GStreamer rows use a four-byte stride; an even cell count keeps rows packed.
-    const int cellsX = std::max(18, int(w * 0.56) / cellW / 2 * 2);
-    const int cellsY = std::max(10, std::min(int(h * 0.49) / cellH, cellsX * cellW * 9 / (16 * cellH)));
-    const int cols = cellsX * 2, rows = cellsY * 4, pad = 6;
-    const int boxW = cellsX * cellW + pad * 2, boxH = cellsY * cellH + pad * 2;
-    const int boxX = (w - boxW) / 2, boxY = std::max(115, (h - boxH - 160) / 2);
-    s.backdrop = SDL_CreateTexture(s.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
-    if (!s.backdrop) throw std::runtime_error(SDL_GetError());
-    SDL_SetRenderTarget(s.renderer, s.backdrop);
-    SDL_SetRenderDrawColor(s.renderer, o.background.r, o.background.g, o.background.b, 255); SDL_RenderClear(s.renderer);
-    const std::array<std::string, 7> tux{"    .--.        _", "   |o_o |      | |", "   |:_/ |      | |", "  //   \\ \\     | |", " (|     | )    |_|", " /'\\_   _/`\\   (_)", " \\___)=(___/"};
-    int line = TTF_FontLineSkip(s.font);
-    for (size_t i = 0; i < tux.size(); ++i) s.text(tux[i], 18, 10 + int(i) * line, o.foreground, false);
-    SDL_SetRenderDrawColor(s.renderer, o.foreground.r, o.foreground.g, o.foreground.b, 255);
-    SDL_Rect border{boxX, boxY, boxW, boxH}; SDL_RenderDrawRect(s.renderer, &border);
-    int y = boxY + boxH + 22;
-    for (const auto& text : {std::string("KERNEL PANIC!"), std::string(tr("Please reboot your computer", "Пожалуйста, перезагрузите компьютер")), o.reason,
-                            std::string(tr("A fatal kernel error has occurred and the system cannot continue.", "Произошла критическая ошибка ядра. Работа системы остановлена.")),
-                            std::string(tr("Restart the computer to recover. Unsaved data may be lost.", "Перезагрузите компьютер. Несохранённые данные могут быть потеряны."))}) {
-        s.text(text, w / 2, y, o.foreground); y += line + 5;
-    }
-    SDL_SetRenderTarget(s.renderer, nullptr);
-    Video video; video.start(o, cols, rows);
+    int w = 0, h = 0, dot = 0, pitch = 0, cellW = 0, cellH = 0;
+    int cellsX = 0, cellsY = 0, cols = 0, rows = 0, boxW = 0, boxH = 0, boxX = 0, boxY = 0;
+    const int pad = 6;
+    auto rebuild = [&] {
+        SDL_GetRendererOutputSize(s.renderer, &w, &h);
+        SDL_RenderSetViewport(s.renderer, nullptr);
+        SDL_RenderSetScale(s.renderer, 1.0f, 1.0f);
+        if (s.backdrop) { SDL_DestroyTexture(s.backdrop); s.backdrop = nullptr; }
+        if (s.font) { TTF_CloseFont(s.font); s.font = nullptr; }
+        s.font = TTF_OpenFont((o.font.empty() ? findFont() : o.font).c_str(), std::clamp(h * 12 / 1000, 12, 19));
+        if (!s.font) throw std::runtime_error(TTF_GetError());
+        TTF_SetFontHinting(s.font, TTF_HINTING_MONO);
+        dot = std::clamp(h / 330, 2, 5); pitch = dot * 2;
+        cellW = pitch * 2 + dot; cellH = pitch * 4 + dot;
+        cellsX = std::max(18, std::min(int(w * 0.48), w - 40) / cellW / 2 * 2);
+        cellsY = std::max(12, std::min(int(h * 0.49) / cellH, cellsX * cellW * 9 / (16 * cellH)));
+        cols = cellsX * 2; rows = cellsY * 4;
+        boxW = cellsX * cellW + pad * 2; boxH = cellsY * cellH + pad * 2;
+        boxX = (w - boxW) / 2; boxY = (h - boxH) / 2;
+        s.backdrop = SDL_CreateTexture(s.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+        if (!s.backdrop) throw std::runtime_error(SDL_GetError());
+        SDL_SetTextureScaleMode(s.backdrop, SDL_ScaleModeNearest);
+        SDL_SetRenderTarget(s.renderer, s.backdrop);
+        SDL_SetRenderDrawColor(s.renderer, o.background.r, o.background.g, o.background.b, 255); SDL_RenderClear(s.renderer);
+        const std::array<std::string, 7> tux{"    .--.        _", "   |o_o |      | |", "   |:_/ |      | |", "  //   \\ \\     | |", " (|     | )    |_|", " /'\\_   _/`\\   (_)", " \\___)=(___/"};
+        int line = TTF_FontLineSkip(s.font);
+        for (size_t i = 0; i < tux.size(); ++i) s.text(tux[i], 18, 10 + int(i) * line, o.foreground, false);
+        SDL_SetRenderDrawColor(s.renderer, o.foreground.r, o.foreground.g, o.foreground.b, 255);
+        SDL_Rect border{boxX, boxY, boxW, boxH}; SDL_RenderDrawRect(s.renderer, &border);
+        int y = boxY + boxH + std::clamp(h / 38, 14, 34);
+        for (const auto& text : {std::string("KERNEL PANIC!"), std::string("Please reboot your computer"), o.reason,
+                                std::string("A fatal kernel error has occurred and the system cannot continue."),
+                                std::string("Restart the computer to recover. Unsaved data may be lost.")}) {
+            s.text(text, w / 2, y, o.foreground); y += line + 5;
+        }
+        SDL_SetRenderTarget(s.renderer, nullptr);
+        SDL_RenderSetViewport(s.renderer, nullptr);
+    };
+    rebuild();
+    auto video = std::make_unique<Video>(); video->start(o, cols, rows);
     Input input; if (o.game) input.start();
     Child audio;
     std::vector<Uint8> pixels(size_t(cols * rows), 0);
@@ -350,12 +372,14 @@ static int run(const Options& o) {
     bool gotFrame = false, running = true, audioStarted = false, failed = false;
     uint64_t frames = 0;
     auto launched = std::chrono::steady_clock::now(), playback = launched, statsAt = launched;
-    auto nextFrame = launched;
+    auto nextFrame = launched, awaitingSince = launched;
     bool painted = false;
     while (running && !interrupted) {
         auto now = std::chrono::steady_clock::now();
         SDL_Event e;
+        bool resetScene = false;
         while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_RENDER_TARGETS_RESET || e.type == SDL_RENDER_DEVICE_RESET) resetScene = true;
             if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) running = false;
             if (!o.game) continue;
             if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
@@ -364,8 +388,10 @@ static int run(const Options& o) {
             }
             if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) input.release();
             if (e.type == SDL_MOUSEMOTION) {
-                int x = std::clamp((e.motion.x - boxX - pad) * 1280 / (boxW - pad * 2), 0, 1279);
-                int yMouse = std::clamp((e.motion.y - boxY - pad) * 720 / (boxH - pad * 2), 0, 719);
+                int logicalW = 0, logicalH = 0; SDL_GetWindowSize(s.window, &logicalW, &logicalH);
+                int mouseX = e.motion.x * w / std::max(1, logicalW), mouseY = e.motion.y * h / std::max(1, logicalH);
+                int x = std::clamp((mouseX - boxX - pad) * 1280 / (boxW - pad * 2), 0, 1279);
+                int yMouse = std::clamp((mouseY - boxY - pad) * 720 / (boxH - pad * 2), 0, 719);
                 input.send("move " + std::to_string(x) + " " + std::to_string(yMouse));
             }
             if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
@@ -375,12 +401,22 @@ static int run(const Options& o) {
             if (e.type == SDL_MOUSEWHEEL && e.wheel.y) input.send(e.wheel.y > 0 ? "wheel up" : "wheel down");
         }
         if (!running) break;
+        int outputW = 0, outputH = 0;
+        SDL_GetRendererOutputSize(s.renderer, &outputW, &outputH);
+        if (outputW > 0 && outputH > 0 && (outputW != w || outputH != h || resetScene)) {
+            video.reset();
+            rebuild();
+            pixels.assign(size_t(cols * rows), 0);
+            dots.clear(); dots.reserve(pixels.size());
+            video = std::make_unique<Video>(); video->start(o, cols, rows, frames / double(o.fps));
+            painted = false; gotFrame = false; nextFrame = now; awaitingSince = now;
+        }
         if (o.duration && std::chrono::duration<double>(now - launched).count() >= o.duration) break;
         bool updated = false;
         if (now >= nextFrame) {
-            updated = video.next(pixels);
+            updated = video->next(pixels);
             if (updated) {
-                if (!gotFrame) { playback = now; gotFrame = true; }
+                if (!gotFrame) { if (frames == 0) playback = now; gotFrame = true; }
                 if (!audioStarted && !o.game && !o.mute) {
                     audioStarted = true;
                     audio.pid = spawn({"ffplay", "-nodisp", "-autoexit", "-vn", "-loglevel", "error", "-nostats", "-i", o.path});
@@ -388,12 +424,13 @@ static int run(const Options& o) {
                 ++frames;
                 nextFrame += std::chrono::microseconds(1000000 / o.fps);
                 if (nextFrame < now) nextFrame = now;
-            } else if (video.ended) { failed = video.child.finish(false) != 0 || !gotFrame; break; }
+            } else if (video->ended) { failed = video->child.finish(false) != 0 || !gotFrame; break; }
         }
-        if (!gotFrame && std::chrono::duration<double>(now - launched).count() > 20) { failed = true; break; }
+        if (!gotFrame && std::chrono::duration<double>(now - awaitingSince).count() > 20) { failed = true; break; }
         if (updated || !painted) {
             painted = true;
-            SDL_RenderCopy(s.renderer, s.backdrop, nullptr, nullptr);
+            SDL_Rect screenRect{0, 0, w, h};
+            SDL_RenderCopy(s.renderer, s.backdrop, nullptr, &screenRect);
             SDL_SetRenderDrawColor(s.renderer, o.foreground.r, o.foreground.g, o.foreground.b, 255);
             dots.clear();
             constexpr int pattern[4][2]{{-16, 16}, {32, -32}, {0, 48}, {24, -8}};
@@ -401,7 +438,7 @@ static int run(const Options& o) {
                 if (int(pixels[size_t(py * cols + px)]) >= std::clamp(o.threshold + pattern[py % 4][px % 2], 0, 255))
                     dots.push_back({boxX + pad + (px / 2) * cellW + (px % 2) * pitch, boxY + pad + (py / 4) * cellH + (py % 4) * pitch, dot, dot});
             if (!dots.empty()) SDL_RenderFillRects(s.renderer, dots.data(), int(dots.size()));
-            if (!gotFrame) s.text(tr("Waiting for video…", "Ожидание видео…"), w / 2, boxY + boxH / 2, o.foreground);
+            if (!gotFrame) s.text("Waiting for video...", w / 2, boxY + boxH / 2, o.foreground);
             SDL_RenderPresent(s.renderer);
         }
         if (o.stats && now - statsAt >= std::chrono::seconds(3)) {
